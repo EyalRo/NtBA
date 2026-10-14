@@ -50,16 +50,20 @@ NtBA proof of concept (320x200, 16 colours, whole court on screen). Written by u
 
 ## How NtBA compares today
 
-| Aspect | Original | NtBA POC | Idea |
+The proof of concept was reworked to chase this look (see `docs/screenshot.png`). Status:
+
+| Aspect | Original | NtBA now | Still to do |
 | --- | --- | --- | --- |
-| Camera | Scrolling half-court | Whole court, fixed | Scrolling camera + bigger sprites (e.g. 32x48) |
-| Court perspective | Oblique end, lane skewed | Symmetric trapezoid | Try the oblique projection once the camera scrolls |
-| Hardwood | Multi-tone planks with breaks | Two alternating tones | Add a third tone and pseudo-random plank breaks |
-| Lane colour | Yellow / blue | Red | Pick a distinct team colour (fictional) |
-| Hoop | Backboard, arm, stanchion, net, shot clock | Edge-on backboard and small net | Draw a 3/4 hoop with a shot-clock box |
-| Players | Numbered jerseys, varied looks | Identical sprites | Numbers and 3–4 skin/hair variants |
-| Scoreboard | Amber dot-matrix, framed | Amber blocky digits | Dot-matrix digit font |
-| Bench & table | Bench with coaches, scorer's table | Small bench strip | Scorer's table, coach figures |
+| Camera | Scrolling half-court | Scrolls to follow the ball, eased | Lead the camera on fast breaks |
+| Court perspective | Slanted baselines, lane skewed | Perspective projection, slanted ends | Tune the amount of skew |
+| Hardwood | Multi-tone planks with breaks | Four tones, random lengths, butt joints | Less noise; grain |
+| Lane colour | Yellow / blue | Blue lane and centre circle | Centre-circle logo |
+| Hoop | Backboard, arm, stanchion, net, shot clock | All of these; shot clock on the stanchion | Backboard shatter/vibration, net swish |
+| Players | Numbered jerseys, varied looks | 28 px sprites, numbers, 3 skin tones + blond, black shoes = controlled | Hand-authored sprites, more poses (dunk, defend) |
+| Scoreboard | Amber dot-matrix, framed | Framed panel with dot-matrix digits | Team names, period changes |
+| Bench & table | Bench with coaches, scorer's table | Both benches, coaches, scorer's table, officials | Cheerleaders, photographers, animation |
+| Crowd | Tiers, waving arms | Parallax tiers with aisles and waving fans | More variety and reactions to scores |
+| Shot mechanic | Hold and release at the apex, tap = fake | Instant shot | See genesis-manual-notes.md |
 
 None of this is required for the current milestone (single-player versus a bot); it is a
 backlog of presentation details that carry the "televised game" feel the project is after.

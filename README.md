@@ -9,6 +9,8 @@ real teams or players.
 and a 5-minute game clock. See [docs/VISION.md](docs/VISION.md) for where this is headed
 (opposing bot team, online peer-to-peer play, a native build).
 
+![NtBA proof of concept](docs/screenshot.png)
+
 ## Play it
 
 ```sh

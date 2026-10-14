@@ -20,10 +20,23 @@ canvas  ◀─ RGBA bytes ◀── ntba_framebuffer() ◀ ntba_render() ◀ ren
   then renders once per animation frame. The core never reads a clock.
 - Input is a `u8` bitmask (`ntba_core::input`). That keeps replays, tests and a future
   lock-step P2P protocol (exchange one byte per tick) trivial.
-- The core renders into a 320x200 paletted framebuffer (16 colours, `render::PALETTE`) and expands
-  it to RGBA. The page scales the canvas with CSS `image-rendering: pixelated`.
+- The core renders into a 320x200 paletted framebuffer (32 colours, `render::PALETTE`; the Genesis
+  could show 64, DOS 16) and expands it to RGBA. The page scales the canvas with CSS `image-rendering: pixelated`.
 - The wasm module uses a C ABI, not `wasm-bindgen`, so the only build requirement is the
   `wasm32-unknown-unknown` target. Keep the exported surface tiny (`ntba-wasm/src/lib.rs`).
+
+## Rendering notes
+
+- The camera scrolls horizontally to follow the ball (`Framebuffer::update_camera`, visual only,
+  eased per rendered frame, clamped so one end of the court is always in view). The crowd scrolls
+  slower than the floor for parallax.
+- `render::project(cam_x, x, y, z)` maps feet to pixels. Scale grows linearly from `FAR_SCALE` to
+  `NEAR_SCALE` px/ft between the far and near sidelines, which gives the slanted baselines of the
+  originals; the floor is drawn by inverting that mapping per pixel (`draw_court`).
+- Hardwood planks, lines and lane colours are computed from world coordinates, so they stay put
+  while the camera moves. Sprites (`draw_person`, `draw_seated`) are drawn procedurally with
+  rectangles; replace them with hand-authored sheets when art is ready.
+- The player you control wears black shoes, as in the Genesis manual.
 
 ## Simulation rules of thumb
 
