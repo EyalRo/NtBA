@@ -1,10 +1,17 @@
 # Context: *Lakers versus Celtics and the NBA Playoffs* (1989)
 
 Reference material for contributors who want to match the look, feel and pacing of the game NtBA
-is inspired by. This folder holds **links and our own notes**; please don't commit screenshots or
-assets copied from the original game, which is copyrighted (the project's rule is *own
-everything*). Link to screenshots hosted elsewhere, and put your own measurements and
-observations in notes instead.
+is inspired by. This folder holds **links, our own notes and a small set of reference
+screenshots**. The screenshots are copyrighted by EA and kept for reference only; nothing in this
+folder may be copied into the game (the project's rule is *own everything*). Prefer linking to
+further screenshots over adding more, and put your own measurements and observations in notes.
+
+## Screenshots and notes
+
+- [screenshots/](screenshots/) — reference-only screenshots of the DOS and Genesis versions
+  (copyrighted by EA, not GPL, not for use as assets — see the README in that folder).
+- [visual-notes.md](visual-notes.md) — what the original looks like and how NtBA compares.
+- [genesis-manual-notes.md](genesis-manual-notes.md) — controls, rules and options from the manual.
 
 ## Sources
 
