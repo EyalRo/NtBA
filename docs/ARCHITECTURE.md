@@ -60,6 +60,6 @@ them. Shot clock 24 s, one 5-minute period, Enter restarts after the buzzer.
 - **Opposition / bot AI:** a second `[Player; 5]` in `Game` and a `controller` per player
   (human, bot, remote) producing the same `u8` input mask — that is also the seam for P2P.
 - **Sprites:** player/ball/referee drawing in `render.rs` is procedural today; swap for
-  hand-authored sprite sheets (indexed pixels in the same 16-colour palette) without touching
+  hand-authored sprite sheets (indexed pixels in the same 32-colour palette) without touching
   the simulation.
 - **Audio:** the host will play sounds from event flags the core exposes (not implemented yet).
