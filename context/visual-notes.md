@@ -48,6 +48,26 @@ NtBA proof of concept (320x200, 16 colours, whole court on screen). Written by u
 - A text prompt ("PRESS START TO BEGIN") and team scores in the bottom strip on the pre-game
   screen. Shot clock shown at the baskets, not only on the scoreboard.
 
+## Target look: a slightly later EA game
+
+[screenshots/later-ea-game-target-look.png](screenshots/later-ea-game-target-look.png) (provided
+by the project owner as "where we would like to get to"). What stands out, and what we did about it:
+
+- **Subtle floor.** Low-contrast planks in a light tan, thin 1-pixel black lines, a painted logo in
+  the centre circle, dashed free-throw circle inside the lane. NtBA now uses closer plank tones,
+  one-pixel lines and an "NTBA" centre logo.
+- **Mild perspective.** Sidelines horizontal, only a gentle slant at the lane. We reduced the
+  far/near scale ratio from 1.8 to 1.4.
+- **Big, dynamic players.** About 1/6 of the screen height, wide running strides with the body
+  bobbing, different skin tones and hair, two clearly distinct kits (white/grey vs red). NtBA
+  sprites are now 34 px tall (17% of the screen) with a four-frame run cycle and body bob.
+- **Tight framing.** The bench, a standing coach in a suit and the far wall take only the top
+  quarter of the screen so the court dominates. NtBA now gives the court 57% of the height.
+- **Courtside ad boards** on the wall (fictional ones here) and a **compact scoreboard** in the
+  top-left corner instead of a big centred panel.
+- Not copied yet: the second kit (no opposition yet), distinct shadows under players, the lane
+  painted in team colour with a dashed ring (we have the ring, in blue).
+
 ## How NtBA compares today
 
 The proof of concept was reworked to chase this look (see `docs/screenshot.png`). Status:
@@ -55,13 +75,13 @@ The proof of concept was reworked to chase this look (see `docs/screenshot.png`)
 | Aspect | Original | NtBA now | Still to do |
 | --- | --- | --- | --- |
 | Camera | Scrolling half-court | Scrolls to follow the ball, eased | Lead the camera on fast breaks |
-| Court perspective | Slanted baselines, lane skewed | Perspective projection, slanted ends | Tune the amount of skew |
-| Hardwood | Multi-tone planks with breaks | Four tones, random lengths, butt joints | Less noise; grain |
+| Court perspective | Slanted baselines (1990) to mild (later) | Mild perspective projection | Tune the amount of skew |
+| Hardwood | Multi-tone planks with breaks | Four close tones, random lengths, butt joints, centre logo | Grain, wear |
 | Lane colour | Yellow / blue | Blue lane and centre circle | Centre-circle logo |
 | Hoop | Backboard, arm, stanchion, net, shot clock | All of these; shot clock on the stanchion | Backboard shatter/vibration, net swish |
-| Players | Numbered jerseys, varied looks | 28 px sprites, numbers, 3 skin tones + blond, black shoes = controlled | Hand-authored sprites, more poses (dunk, defend) |
-| Scoreboard | Amber dot-matrix, framed | Framed panel with dot-matrix digits | Team names, period changes |
-| Bench & table | Bench with coaches, scorer's table | Both benches, coaches, scorer's table, officials | Cheerleaders, photographers, animation |
+| Players | Numbered jerseys, varied looks | 34 px sprites, numbers, 3 skin tones + blond, run cycle with bob, black shoes = controlled | Hand-authored sprites, more poses (dunk, defend) |
+| Scoreboard | Amber dot-matrix, framed (compact in the later game) | Compact framed panel, dot-matrix digits | Team names, period |
+| Bench & table | Bench with coaches, scorer's table, ad boards | Both benches, standing coach, scorer's table, officials, ad boards | Cheerleaders, photographers, animation |
 | Crowd | Tiers, waving arms | Parallax tiers with aisles and waving fans | More variety and reactions to scores |
 | Shot mechanic | Hold and release at the apex, tap = fake | Instant shot | See genesis-manual-notes.md |
 

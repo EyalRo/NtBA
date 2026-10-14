@@ -11,4 +11,6 @@ assets (NtBA's art is original). If a rights holder asks, they will be removed.
 | `genesis-tipoff.webp` | Sega Genesis | Opening tip-off, centre-court view, scoreboard, benches, scorer's table |
 | `genesis-gameplay-half-court.webp` | Sega Genesis | Play at the basket, shot clock on the stanchion, bench, oblique end-of-court perspective |
 
+| `later-ea-game-target-look.png` | A slightly later EA basketball game (title not confirmed) | The look NtBA is aiming for: tight half-court camera, large animated players, subtle floor, centre logo, courtside ad boards, compact HUD |
+
 What we take from them is written up in [../visual-notes.md](../visual-notes.md).

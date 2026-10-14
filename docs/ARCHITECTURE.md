@@ -31,8 +31,8 @@ canvas  ◀─ RGBA bytes ◀── ntba_framebuffer() ◀ ntba_render() ◀ ren
   eased per rendered frame, clamped so one end of the court is always in view). The crowd scrolls
   slower than the floor for parallax.
 - `render::project(cam_x, x, y, z)` maps feet to pixels. Scale grows linearly from `FAR_SCALE` to
-  `NEAR_SCALE` px/ft between the far and near sidelines, which gives the slanted baselines of the
-  originals; the floor is drawn by inverting that mapping per pixel (`draw_court`).
+  `NEAR_SCALE` px/ft between the far and near sidelines, which gives the gently slanted baselines of
+  the originals; the floor is drawn by inverting that mapping per pixel (`draw_court`).
 - Hardwood planks, lines and lane colours are computed from world coordinates, so they stay put
   while the camera moves. Sprites (`draw_person`, `draw_seated`) are drawn procedurally with
   rectangles; replace them with hand-authored sheets when art is ready.

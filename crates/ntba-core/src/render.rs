@@ -48,10 +48,10 @@ pub const JERSEY_HI: u8 = 31;
 pub const PALETTE: [[u8; 3]; 32] = [
     [0, 0, 0],
     [252, 252, 252],
-    [220, 168, 96],
-    [200, 144, 72],
-    [172, 116, 56],
-    [236, 188, 116],
+    [214, 160, 86],
+    [204, 148, 76],
+    [186, 130, 64],
+    [222, 170, 98],
     [40, 72, 184],
     [24, 40, 112],
     [244, 196, 152],
@@ -81,14 +81,14 @@ pub const PALETTE: [[u8; 3]; 32] = [
 ];
 
 // Screen layout.
-const COURT_TOP: i32 = 84;
-const COURT_PX_H: i32 = 100;
+const COURT_TOP: i32 = 70;
+const COURT_PX_H: i32 = 114;
 const PX_PER_FT_Y: f32 = COURT_PX_H as f32 / COURT_W;
-const Z_PX: f32 = 4.3; // screen pixels per foot of height
+const Z_PX: f32 = 5.2; // screen pixels per foot of height
 const CAM_MIN: f32 = 28.0;
 const CAM_MAX: f32 = COURT_L - 28.0;
-const FAR_SCALE: f32 = 3.6; // pixels per foot along x at the far sideline
-const NEAR_SCALE: f32 = 6.4; // ... and at the near sideline
+const FAR_SCALE: f32 = 4.2; // pixels per foot along x at the far sideline
+const NEAR_SCALE: f32 = 5.9; // ... and at the near sideline
 
 pub struct Framebuffer {
     pub idx: Vec<u8>,
@@ -257,7 +257,7 @@ fn hash(a: u32, b: u32) -> u32 {
 // ---------------------------------------------------------------- arena
 
 fn draw_crowd(fb: &mut Framebuffer, cam: f32, ticks: u64) {
-    fb.rect(0, 0, SCREEN_W as i32, 56, WALL);
+    fb.rect(0, 0, SCREEN_W as i32, 48, WALL);
     let scroll = (cam * 2.0) as i32; // parallax: the stands move slower than the floor
     let (base, off) = (scroll.div_euclid(6), scroll.rem_euclid(6));
     let bodies = [
@@ -271,8 +271,8 @@ fn draw_crowd(fb: &mut Framebuffer, cam: f32, ticks: u64) {
         TRIM,
     ];
     let skins = [SKIN_LIGHT, SKIN_MID, SKIN_DARK, SKIN_LIGHT];
-    for row in 0..7 {
-        let y0 = 4 + row * 7;
+    for row in 0..5 {
+        let y0 = 2 + row * 7;
         for col in 0..=(SCREEN_W as i32 / 6 + 1) {
             let wc = base + col;
             let x = col * 6 - off;
@@ -297,14 +297,25 @@ fn draw_crowd(fb: &mut Framebuffer, cam: f32, ticks: u64) {
             }
         }
     }
-    // Wall band and advertising strip above the benches.
-    fb.rect(0, 54, SCREEN_W as i32, 3, DARK);
-    fb.rect(0, 57, SCREEN_W as i32, 9, SEATS);
-    let ad_off = (cam * 3.0) as i32;
-    for k in -1..12 {
-        let x = k * 40 - ad_off.rem_euclid(40);
-        fb.rect(x, 59, 30, 5, PAINT_DARK);
-        fb.rect(x + 2, 60, 26, 3, PAINT);
+    // Barrier wall with courtside advertising boards (these scroll with the floor).
+    fb.rect(0, 35, SCREEN_W as i32, 1, DARK);
+    fb.rect(0, 36, SCREEN_W as i32, 12, SEATS);
+    let ad_off = (cam * 4.0) as i32;
+    let (ad_base, ad_x) = (ad_off.div_euclid(52), ad_off.rem_euclid(52));
+    const ADS: [&str; 4] = ["NTBA", "HOOPS", "SPORTS", "OPEN"];
+    for k in 0..=(SCREEN_W as i32 / 52 + 1) {
+        let idx = ad_base + k;
+        let x = k * 52 - ad_x;
+        let white = idx.rem_euclid(2) == 0;
+        fb.rect(x + 2, 38, 46, 8, if white { WHITE } else { PAINT });
+        let label = ADS[idx.rem_euclid(4) as usize];
+        fb.text(
+            x + 25 - text_width(label, 1) / 2,
+            40,
+            label,
+            if white { PAINT_DARK } else { WHITE },
+            1,
+        );
     }
 }
 
@@ -317,59 +328,29 @@ struct Look {
     sock: u8,
     number: u8,
     stripes: bool,
+    long_pants: bool,
+}
+
+const fn team_look(skin: u8, hair: u8, number: u8) -> Look {
+    Look {
+        skin,
+        hair,
+        top: JERSEY,
+        trim: TRIM,
+        shorts: TRIM,
+        sock: WHITE,
+        number,
+        stripes: false,
+        long_pants: false,
+    }
 }
 
 const TEAM_LOOKS: [Look; 5] = [
-    Look {
-        skin: SKIN_MID,
-        hair: BLACK,
-        top: JERSEY,
-        trim: TRIM,
-        shorts: TRIM,
-        sock: WHITE,
-        number: 4,
-        stripes: false,
-    },
-    Look {
-        skin: SKIN_LIGHT,
-        hair: HAIR_BLOND,
-        top: JERSEY,
-        trim: TRIM,
-        shorts: TRIM,
-        sock: WHITE,
-        number: 12,
-        stripes: false,
-    },
-    Look {
-        skin: SKIN_DARK,
-        hair: BLACK,
-        top: JERSEY,
-        trim: TRIM,
-        shorts: TRIM,
-        sock: WHITE,
-        number: 23,
-        stripes: false,
-    },
-    Look {
-        skin: SKIN_MID,
-        hair: BLACK,
-        top: JERSEY,
-        trim: TRIM,
-        shorts: TRIM,
-        sock: WHITE,
-        number: 32,
-        stripes: false,
-    },
-    Look {
-        skin: SKIN_DARK,
-        hair: BLACK,
-        top: JERSEY,
-        trim: TRIM,
-        shorts: TRIM,
-        sock: WHITE,
-        number: 45,
-        stripes: false,
-    },
+    team_look(SKIN_MID, BLACK, 4),
+    team_look(SKIN_LIGHT, HAIR_BLOND, 12),
+    team_look(SKIN_DARK, BLACK, 23),
+    team_look(SKIN_MID, BLACK, 32),
+    team_look(SKIN_DARK, BLACK, 45),
 ];
 const REF_LOOK: Look = Look {
     skin: SKIN_MID,
@@ -380,44 +361,57 @@ const REF_LOOK: Look = Look {
     sock: BLACK,
     number: 0,
     stripes: true,
+    long_pants: true,
+};
+const COACH_LOOK: Look = Look {
+    skin: SKIN_LIGHT,
+    hair: GRAY,
+    top: SUIT,
+    trim: WHITE,
+    shorts: SUIT,
+    sock: SUIT,
+    number: 0,
+    stripes: false,
+    long_pants: true,
 };
 
-/// A seated person behind the far sideline (bench or table). Feet row is `sy`.
+/// A seated person behind the far sideline (bench or table). Feet row is `sy`; about 24 px tall.
 fn draw_seated(fb: &mut Framebuffer, sx: i32, sy: i32, jacket: u8, skin: u8, hair: u8, suit: bool) {
-    fb.rect(sx - 4, sy - 15, 9, 11, GRAY); // folding chair back
-    fb.rect(sx - 3, sy - 13, 7, 8, jacket);
+    fb.rect(sx - 5, sy - 19, 11, 14, GRAY); // folding chair back
+    fb.rect(sx - 4, sy - 17, 9, 10, jacket);
     if suit {
-        fb.rect(sx - 1, sy - 13, 3, 4, WHITE);
-        fb.px(sx, sy - 12, CROWD_RED);
-        fb.px(sx, sy - 11, CROWD_RED);
+        fb.rect(sx - 1, sy - 17, 3, 5, WHITE);
+        fb.rect(sx, sy - 16, 1, 4, CROWD_RED);
     } else {
-        fb.rect(sx - 1, sy - 13, 1, 8, WHITE); // zip stripe
+        fb.rect(sx, sy - 17, 1, 10, WHITE); // zip stripe
     }
-    fb.rect(sx - 2, sy - 18, 5, 5, skin);
-    fb.rect(sx - 2, sy - 18, 5, 2, hair);
-    fb.rect(sx - 3, sy - 5, 3, 4, if suit { SUIT } else { jacket });
-    fb.rect(sx + 1, sy - 5, 3, 4, if suit { SUIT } else { jacket });
-    fb.rect(sx - 3, sy - 1, 3, 2, WHITE);
-    fb.rect(sx + 1, sy - 1, 3, 2, WHITE);
+    fb.rect(sx - 2, sy - 24, 5, 6, skin);
+    fb.rect(sx - 2, sy - 24, 5, 2, hair);
+    let legs = if suit { SUIT } else { jacket };
+    fb.rect(sx - 4, sy - 7, 4, 5, legs);
+    fb.rect(sx + 1, sy - 7, 4, 5, legs);
+    fb.rect(sx - 4, sy - 2, 4, 2, WHITE);
+    fb.rect(sx + 1, sy - 2, 4, 2, WHITE);
 }
 
+const BENCH_FEET: i32 = 68;
+
 fn draw_bench_area(fb: &mut Framebuffer, cam: f32) {
-    fb.rect(0, 66, SCREEN_W as i32, 18, APRON);
-    let feet_y = 80;
+    fb.rect(0, 48, SCREEN_W as i32, 22, APRON);
     // Benches: home on the left in gold warm-ups, visitors on the right in green.
     for (k, x) in [8.0_f32, 11.5, 15.0, 18.5, 22.0].iter().enumerate() {
         let (sx, _) = project(cam, *x, -1.5, 0.0);
         let look = &TEAM_LOOKS[k];
-        draw_seated(fb, sx, feet_y, JERSEY, look.skin, look.hair, false);
+        draw_seated(fb, sx, BENCH_FEET, JERSEY, look.skin, look.hair, false);
     }
     for (k, x) in [66.0_f32, 69.5, 73.0, 76.5, 80.0].iter().enumerate() {
         let (sx, _) = project(cam, *x, -1.5, 0.0);
         let skin = [SKIN_LIGHT, SKIN_DARK, SKIN_MID, SKIN_DARK, SKIN_LIGHT][k];
-        draw_seated(fb, sx, feet_y, CROWD_GREEN, skin, BLACK, false);
+        draw_seated(fb, sx, BENCH_FEET, CROWD_GREEN, skin, BLACK, false);
     }
-    for x in [25.5_f32, 29.0, 83.5, 87.0] {
+    for x in [25.5_f32, 83.5, 87.0] {
         let (sx, _) = project(cam, x, -1.5, 0.0);
-        draw_seated(fb, sx, feet_y, SUIT, SKIN_LIGHT, GRAY, true);
+        draw_seated(fb, sx, BENCH_FEET, SUIT, SKIN_LIGHT, GRAY, true);
     }
     // Scorer's table with officials behind it.
     let (x0, _) = project(cam, 38.0, -1.5, 0.0);
@@ -429,25 +423,25 @@ fn draw_bench_area(fb: &mut Framebuffer, cam: f32) {
         } else {
             (SUIT, [SKIN_LIGHT, SKIN_MID, SKIN_DARK, SKIN_LIGHT][k])
         };
-        draw_seated(fb, sx, 76, jacket, skin, BLACK, k != 1);
+        draw_seated(fb, sx, 62, jacket, skin, BLACK, k != 1);
     }
-    fb.rect(x0, 67, x1 - x0, 2, WHITE);
-    fb.rect(x0, 69, x1 - x0, 11, PAINT);
+    fb.rect(x0, 55, x1 - x0, 2, WHITE);
+    fb.rect(x0, 57, x1 - x0, 11, PAINT);
     let mut x = x0;
     while x < x1 {
-        fb.rect(x, 69, 1, 11, PAINT_DARK);
+        fb.rect(x, 57, 1, 11, PAINT_DARK);
         x += 5;
     }
     let mut x = x0;
     while x < x1 {
-        fb.rect(x, 80, 3, 1, PAINT);
+        fb.rect(x, 68, 3, 1, PAINT);
         x += 6;
     }
     for mx in [x0 + 8, x0 + 26, x0 + 46] {
-        fb.rect(mx, 62, 7, 5, BLACK);
-        fb.rect(mx + 1, 63, 5, 3, GRAY);
+        fb.rect(mx, 50, 7, 5, BLACK);
+        fb.rect(mx + 1, 51, 5, 3, GRAY);
     }
-    fb.rect(x0 + 14, 66, 6, 1, WHITE);
+    fb.rect(x0 + 14, 54, 6, 1, WHITE);
 }
 
 // ---------------------------------------------------------------- court
@@ -456,46 +450,72 @@ fn near(a: f32, b: f32, tol: f32) -> bool {
     (a - b).abs() < tol
 }
 
+/// True when (`dx`, `dy`) feet from a circle's centre lies on its ring, with a line about one
+/// screen pixel wide regardless of the local horizontal/vertical scale.
+fn ring(dx: f32, dy: f32, radius: f32, s: f32) -> bool {
+    let d = (dx * dx + dy * dy).sqrt();
+    if d < 0.001 {
+        return false;
+    }
+    let (gx, gy) = (s * dx / d, PX_PER_FT_Y * dy / d);
+    let scale = (gx * gx + gy * gy).sqrt();
+    (d - radius).abs() < 0.6 / scale
+}
+
 /// Colour of the hardwood at a court position (feet), markings included. `s` is the local
-/// horizontal pixels-per-foot so line widths stay about two pixels.
+/// horizontal pixels-per-foot so line widths stay about one pixel.
 fn floor_colour(wx: f32, wy: f32, s: f32) -> u8 {
     let mx = wx.min(COURT_L - wx); // everything but the centre line is symmetric
-    let ltx = 1.0 / s; // half line width along x (feet) = 1px
-    let lty = 1.0 / (2.0 * PX_PER_FT_Y); // half line width along y (feet) = 1px
-    let hoop_d = ((mx - 5.25).powi(2) + (wy - HOOP_Y).powi(2)).sqrt();
-    let ft_d = ((mx - 19.0).powi(2) + (wy - HOOP_Y).powi(2)).sqrt();
-    let centre_d = ((wx - COURT_L / 2.0).powi(2) + (wy - HOOP_Y).powi(2)).sqrt();
+    let ltx = 0.6 / s; // half line width along x (feet)
+    let lty = 0.6 / PX_PER_FT_Y; // half line width along y (feet)
+    let (hx, hy) = (mx - 5.25, wy - HOOP_Y);
+    let (fx, fy) = (mx - 19.0, wy - HOOP_Y);
+    let (cx, cy) = (wx - COURT_L / 2.0, wy - HOOP_Y);
+    let centre_d = (cx * cx + cy * cy).sqrt();
+    let in_lane = mx < 19.0 && (wy - HOOP_Y).abs() < 8.0;
 
-    let line = wy < 2.0 * lty
-        || wy > COURT_W - 2.0 * lty
-        || mx < 2.0 * ltx
+    let line = wy < 1.6 * lty
+        || wy > COURT_W - 1.6 * lty
+        || mx < 1.6 * ltx
         || near(wx, COURT_L / 2.0, ltx)
-        || near(centre_d, 6.0, 0.55)
+        || ring(cx, cy, 6.0, s)
         || (mx < 19.0 && (near(wy, 17.0, lty) || near(wy, 33.0, lty)))
-        || (near(mx, 19.0, ltx) && (wy - HOOP_Y).abs() < 8.0)
-        || (mx >= 19.0 && near(ft_d, 6.0, 0.55))
-        || (near(hoop_d, 23.75, 0.55) && (wy - HOOP_Y).abs() < 22.0 && mx > 5.25)
+        || (near(mx, 19.0, ltx) && in_lane)
+        || (ring(fx, fy, 6.0, s) && (mx >= 19.0 || (wy * 1.4) as i32 & 1 == 0))
+        || (ring(hx, hy, 23.75, s) && hy.abs() < 22.0 && mx > 5.25)
         || (mx < 14.0 && (near(wy, 3.0, lty) || near(wy, COURT_W - 3.0, lty)));
     if line {
         return BLACK;
     }
-    if (mx < 19.0 && (wy - HOOP_Y).abs() < 8.0) || centre_d < 6.0 {
+    // Painted "NTBA" logo in the centre circle (23x5 cells, stretched like floor art).
+    const LOGO: [&[u8; 23]; 5] = [
+        b"10001011111011110001110",
+        b"11001000100010001010001",
+        b"10101000100011110011111",
+        b"10011000100010001010001",
+        b"10001000100011110010001",
+    ];
+    let (u, v) = ((cx + 5.175) / 0.45, (cy + 1.625) / 0.65);
+    if (0.0..23.0).contains(&u) && (0.0..5.0).contains(&v) && LOGO[v as usize][u as usize] == b'1' {
+        return WHITE;
+    }
+    if in_lane || centre_d < 6.0 {
         return PAINT;
     }
-    // Hardwood: horizontal planks, each with its own length, offset and tone.
+    // Hardwood: horizontal planks, each with its own length, offset and a close-ish tone.
     let row = wy as i32;
     let h = hash(row as u32, 7);
     let len = 6.0 + (h % 6) as f32;
     let off = ((h >> 8) % 97) as f32;
     let t = (wx + off) / len;
     let plank = t.floor() as i32;
-    if t - t.floor() < 0.5 / len {
+    if t - t.floor() < 0.25 / len {
         return WOOD_DARK; // butt joint between boards
     }
-    match hash(row as u32, plank as u32 ^ 0xABCD) % 7 {
-        0 | 1 | 6 => WOOD_MID,
-        2 | 3 => WOOD_LIGHT,
-        4 => WOOD_DARK,
+    match hash(row as u32, plank as u32 ^ 0xABCD) % 8 {
+        0 | 1 | 2 | 7 => WOOD_MID,
+        3 | 4 => WOOD_LIGHT,
+        5 => WOOD_DARK,
         _ => WOOD_HI,
     }
 }
@@ -599,9 +619,19 @@ fn draw_rim_and_net(fb: &mut Framebuffer, cam: f32, mirror: bool) {
 
 // ---------------------------------------------------------------- people and ball
 
+const COACH_X: f32 = 28.0;
+const COACH_Y: f32 = -0.6;
+const STILL: Pose = Pose {
+    frame: 0,
+    moving: false,
+    jump: false,
+    handling: false,
+};
+
 enum Drawable {
     Player(usize),
     Referee,
+    Coach,
     Ball,
 }
 
@@ -613,6 +643,7 @@ fn draw_entities(g: &Game, fb: &mut Framebuffer, cam: f32) {
         order.push((p.y, Drawable::Player(i)));
     }
     order.push((ref_y, Drawable::Referee));
+    order.push((COACH_Y, Drawable::Coach));
     let ball_key = match g.ball.state {
         BallState::Held(h) => g.players[h].y + 0.01,
         _ => g.ball.y,
@@ -625,6 +656,8 @@ fn draw_entities(g: &Game, fb: &mut Framebuffer, cam: f32) {
         let (sx, sy) = project(cam, p.x, p.y, 0.0);
         fb.rect(sx - 6, sy - 1, 13, 3, SHADOW);
     }
+    let (cxs, cys) = project(cam, COACH_X, COACH_Y, 0.0);
+    fb.rect(cxs - 6, cys - 1, 13, 3, SHADOW);
     let (rx, ry) = project(cam, ref_x, ref_y, 0.0);
     fb.rect(rx - 6, ry - 1, 13, 3, SHADOW);
     let (bx, by) = project(cam, g.ball.x, g.ball.y, 0.0);
@@ -633,20 +666,8 @@ fn draw_entities(g: &Game, fb: &mut Framebuffer, cam: f32) {
     for (_, d) in order {
         match d {
             Drawable::Player(i) => draw_player(g, fb, cam, i),
-            Drawable::Referee => draw_person(
-                fb,
-                rx,
-                ry,
-                1,
-                &REF_LOOK,
-                Pose {
-                    frame: 0,
-                    moving: false,
-                    jump: false,
-                    handling: false,
-                },
-                false,
-            ),
+            Drawable::Referee => draw_person(fb, rx, ry, 1, &REF_LOOK, STILL, false),
+            Drawable::Coach => draw_person(fb, cxs, cys, 1, &COACH_LOOK, STILL, false),
             Drawable::Ball => draw_ball(g, fb, cam),
         }
     }
@@ -695,7 +716,7 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: f32, i: usize) {
         controlled,
     );
     if controlled && (g.ticks / 20) % 2 == 0 {
-        let top = sy - jump_h - 41;
+        let top = sy - jump_h - 46;
         fb.rect(sx - 3, top, 7, 1, WHITE);
         fb.rect(sx - 2, top + 1, 5, 1, WHITE);
         fb.rect(sx - 1, top + 2, 3, 1, WHITE);
@@ -703,7 +724,7 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: f32, i: usize) {
     }
 }
 
-/// Draw a standing/running person about 28 px tall, feet at (`sx`, `sy`).
+/// Draw a standing/running person about 34 px tall, feet at (`sx`, `sy`).
 /// The player the human controls wears black shoes, like in the original.
 fn draw_person(
     fb: &mut Framebuffer,
@@ -714,92 +735,117 @@ fn draw_person(
     pose: Pose,
     black_shoes: bool,
 ) {
+    // Body bobs one pixel on the passing frames of the run cycle.
+    let bob = if pose.moving && (pose.frame == 1 || pose.frame == 3) {
+        1
+    } else {
+        0
+    };
     // Mirror-aware rectangle: dx0..=dx1 are offsets toward the facing direction.
     let mut r = |dx0: i32, dx1: i32, top: i32, bot: i32, c: u8| {
+        let up = if top < -9 { bob } else { 0 };
         let (a, b) = if f >= 0 {
             (sx + dx0, sx + dx1)
         } else {
             (sx - dx1, sx - dx0)
         };
-        fb.rect(a, sy + top, b - a + 1, bot - top + 1, c);
+        fb.rect(a, sy + top - up, b - a + 1, bot - top + 1, c);
     };
 
-    // Stride per walk-cycle frame: (back leg offset, front leg offset, back lift, front lift).
-    let (back_s, front_s, back_lift, front_lift) = if pose.jump {
-        (-1, 1, 2, 2)
+    // Run cycle: (back stride, front stride, back leg lifted, front leg lifted).
+    let (back_s, front_s, back_up, front_up) = if pose.jump {
+        (-1, 1, true, true)
     } else if !pose.moving {
-        (-1, 1, 0, 0)
+        (-1, 1, false, false)
     } else {
         match pose.frame {
-            0 => (-3, 3, 0, 0),
-            1 => (-1, 1, 0, 3),
-            2 => (3, -3, 0, 0),
-            _ => (1, -1, 3, 0),
+            0 => (-4, 4, false, false),
+            1 => (-1, 1, false, true),
+            2 => (4, -4, false, false),
+            _ => (1, -1, true, false),
         }
     };
+    let leg = if look.long_pants {
+        look.shorts
+    } else {
+        look.skin
+    };
     let shoe = if black_shoes { BLACK } else { WHITE };
-    for (hip, stride, lift) in [(-2, back_s, back_lift), (1, front_s, front_lift)] {
-        let top_off = stride / 2;
-        r(hip + top_off, hip + top_off + 1, -5, -4 + lift, look.skin);
-        if lift < 3 {
-            r(hip + stride, hip + stride + 1, -3 + lift, -2, look.sock);
+    for (hip, stride, up) in [(-2, back_s, back_up), (1, front_s, front_up)] {
+        if up {
+            // Knee driven up, shin tucked behind.
+            r(hip + 1, hip + 2, -9, -6, leg);
+            r(hip - 1, hip, -6, -4, leg);
+            r(hip - 1, hip + 1, -3, -2, shoe);
+        } else {
+            r(hip + stride / 2, hip + stride / 2 + 1, -9, -6, leg);
+            r(
+                hip + stride,
+                hip + stride + 1,
+                -5,
+                -2,
+                if look.long_pants { leg } else { look.sock },
+            );
             r(hip + stride, hip + stride + 2, -1, 0, shoe);
         }
     }
-    // Shorts.
-    r(-3, 3, -11, -6, look.shorts);
-    r(
-        3,
-        3,
-        -11,
-        -6,
-        if look.stripes { look.shorts } else { JERSEY },
-    );
-    // Torso.
+    // Shorts (baggy flare at the hem).
+    r(-3, 3, -16, -10, look.shorts);
+    r(-4, 4, -12, -10, look.shorts);
+    if !look.stripes && !look.long_pants {
+        r(3, 3, -16, -10, JERSEY);
+    }
+    // Torso: sleeveless jersey with trim down the sides, or stripes / suit jacket.
     if look.stripes {
-        for row in -22..=-12 {
+        for row in -28..=-17 {
             r(-3, 3, row, row, if row % 2 == 0 { BLACK } else { WHITE });
         }
     } else {
-        r(-3, 3, -22, -12, look.top);
-        r(-3, -3, -22, -12, look.trim);
-        r(3, 3, -22, -12, look.trim);
-        r(-1, 1, -22, -22, look.skin);
+        r(-3, 3, -28, -17, look.top);
+        if !look.long_pants {
+            r(-3, -3, -28, -17, look.trim);
+            r(3, 3, -28, -17, look.trim);
+            r(-1, 1, -28, -27, look.skin);
+        } else {
+            r(-1, 1, -28, -22, WHITE);
+            r(0, 0, -27, -22, CROWD_RED);
+        }
     }
     // Neck and head.
-    r(-1, 1, -23, -23, look.skin);
-    r(-2, 2, -28, -24, look.skin);
-    r(-2, 2, -28, -27, look.hair);
-    r(-2, -1, -26, -25, look.hair);
-    r(1, 1, -26, -26, BLACK);
+    r(-1, 1, -29, -29, look.skin);
+    r(-2, 2, -34, -30, look.skin);
+    r(-2, 2, -34, -33, look.hair);
+    r(-2, -1, -32, -31, look.hair);
+    r(1, 1, -32, -32, BLACK);
     // Arms.
-    let sleeve = if look.stripes { WHITE } else { look.top };
-    if pose.jump {
-        r(2, 3, -33, -22, look.skin);
-        r(-5, -4, -27, -22, look.skin);
-        r(2, 3, -22, -21, sleeve);
-    } else if pose.handling {
-        r(4, 8, -17, -16, look.skin);
-        r(4, 5, -22, -18, look.skin);
-        r(-5, -4, -22, -14, look.skin);
-        r(4, 5, -22, -21, sleeve);
-        r(-5, -4, -22, -21, sleeve);
+    let sleeve = if look.stripes || look.long_pants {
+        look.top
     } else {
-        let swing = if pose.moving {
-            [2, 0, -2, 0][pose.frame as usize]
-        } else {
-            0
-        };
-        r(4 + swing / 2, 5 + swing / 2, -22, -14, look.skin);
-        r(-5 - swing / 2, -4 - swing / 2, -22, -14, look.skin);
-        r(4, 5, -22, -21, sleeve);
-        r(-5, -4, -22, -21, sleeve);
+        look.skin
+    };
+    let sw = if pose.moving {
+        [3, 0, -3, 0][pose.frame as usize]
+    } else {
+        0
+    };
+    if pose.jump {
+        r(2, 3, -41, -28, look.skin);
+        r(-5, -4, -35, -28, look.skin);
+    } else if pose.handling {
+        r(4, 5, -28, -22, look.skin);
+        r(4, 8, -21, -20, look.skin);
+        r(-5, -4, -28, -17, look.skin);
+    } else {
+        r(4, 5, -28, -23, sleeve);
+        r(4 + sw, 5 + sw, -22, -17, look.skin);
+        r(-5, -4, -28, -23, sleeve);
+        r(-5 - sw, -4 - sw, -22, -17, look.skin);
     }
     // Jersey number (drawn upright regardless of facing).
     if look.number > 0 {
         let s = format!("{}", look.number);
         let w = text_width(&s, 1);
-        fb.text(sx - w / 2, sy - 20, &s, look.trim, 1);
+        fb.text(sx - w / 2, sy - 25 - bob, &s, look.trim, 1);
     }
 }
 
@@ -812,24 +858,19 @@ fn draw_bottom_strip(fb: &mut Framebuffer) {
 }
 
 fn draw_scoreboard(g: &Game, fb: &mut Framebuffer) {
-    // Framed panel like the stadium scoreboard of the originals.
-    fb.rect(68, 1, 184, 38, WHITE);
-    fb.rect(69, 2, 182, 36, GRAY);
-    fb.rect(71, 4, 178, 32, BLACK);
+    // Compact framed panel in the corner, like the later EA basketball games.
+    fb.rect(2, 2, 136, 30, WHITE);
+    fb.rect(3, 3, 134, 28, GRAY);
+    fb.rect(4, 4, 132, 26, BLACK);
 
-    fb.text(78, 7, "HOME", WHITE, 1);
-    fb.text_centered(160, 7, "PER. 1", WHITE, 1);
-    fb.text(249 - 8 - text_width("SHOT", 1), 7, "SHOT", WHITE, 1);
+    fb.text(10, 6, "TIME", WHITE, 1);
+    fb.text(66, 6, "HOME", WHITE, 1);
+    fb.text(108, 6, "SHOT", WHITE, 1);
 
-    fb.dot_text(78, 16, &format!("{:03}", g.score));
     let secs = g.clock.ceil() as u32;
-    let clock = format!("{}:{:02}", secs / 60, secs % 60);
-    fb.dot_text(160 - (clock.len() as i32 * 12 - 3) / 2, 16, &clock);
-    fb.dot_text(
-        249 - 8 - 21,
-        16,
-        &format!("{:02}", g.shot_clock.ceil() as u32),
-    );
+    fb.dot_text(10, 13, &format!("{}:{:02}", secs / 60, secs % 60));
+    fb.dot_text(66, 13, &format!("{:03}", g.score));
+    fb.dot_text(108, 13, &format!("{:02}", g.shot_clock.ceil() as u32));
 }
 
 fn draw_overlays(g: &Game, fb: &mut Framebuffer) {
@@ -841,8 +882,8 @@ fn draw_overlays(g: &Game, fb: &mut Framebuffer) {
     }
     if let Some((msg, _)) = g.message {
         let w = text_width(msg, 2) + 8;
-        fb.rect(160 - w / 2, 44, w, 14, BLACK);
-        fb.text_centered(160, 47, msg, WHITE, 2);
+        fb.rect(214 - w / 2, 8, w, 14, BLACK);
+        fb.text_centered(214, 11, msg, WHITE, 2);
     }
 }
 
