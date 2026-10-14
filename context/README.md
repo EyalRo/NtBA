@@ -14,6 +14,8 @@ observations in notes instead.
   <https://www.mobygames.com/game/614> (DOS: <https://mobygames.com/game/dos/lakers-versus-celtics-and-the-nba-playoffs>)
 - Compute! magazine review (issue 117) — rules, controls, sound criticism:
   <https://atarimagazines.com/compute/issue117/pp104_reviews_LAKERS_VERSUS_CELTICS_AND_THE_NBA_PLAYOFFS.php>
+- Genesis US manual (controls, rules, options): <https://segaretro.org/images/1/1d/Lakers_Vs_Celtics_MD_US_Manual.pdf>
+  — our summary is in [genesis-manual-notes.md](genesis-manual-notes.md)
 - Giant Bomb — game page: <https://giantbomb.com/wiki/Games/Lakers_vs_Celtics_and_the_NBA_Playoffs>
 - Sega Retro (Genesis version): <https://segaretro.org/700401>
 - SEGADoes — Genesis write-up: <https://segadoes.com/2017/12/06/lakers-versus-celtics-and-the-nba-playoffs/>
