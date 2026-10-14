@@ -23,6 +23,9 @@ further screenshots over adding more, and put your own measurements and observat
   <https://atarimagazines.com/compute/issue117/pp104_reviews_LAKERS_VERSUS_CELTICS_AND_THE_NBA_PLAYOFFS.php>
 - Genesis US manual (controls, rules, options): <https://segaretro.org/images/1/1d/Lakers_Vs_Celtics_MD_US_Manual.pdf>
   — our summary is in [genesis-manual-notes.md](genesis-manual-notes.md)
+- Lilura1 — blog post on the 1989 IBM PC / MS-DOS version (screenshot collage: title, stats
+  screens, gameplay): <https://lilura1.blogspot.com/2022/04/Lakers-versus-Celtics-NBA-Playoffs-IBM-PC-MS-DOS-1989-Electronic-Arts.html>
+  (not yet summarised here — the page could not be fetched from the build environment)
 - Giant Bomb — game page: <https://giantbomb.com/wiki/Games/Lakers_vs_Celtics_and_the_NBA_Playoffs>
 - Sega Retro (Genesis version): <https://segaretro.org/700401>
 - SEGADoes — Genesis write-up: <https://segadoes.com/2017/12/06/lakers-versus-celtics-and-the-nba-playoffs/>
