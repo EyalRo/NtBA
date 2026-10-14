@@ -1,0 +1,15 @@
+:root { color-scheme: dark; }
+html, body { margin: 0; height: 100%; background: #111118; color: #ccc; font: 14px/1.4 ui-monospace, monospace; }
+main { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; box-sizing: border-box; }
+canvas {
+  width: min(100vw - 24px, (100vh - 120px) * 1.6);
+  aspect-ratio: 8 / 5;
+  image-rendering: pixelated;   /* nearest-neighbour scaling */
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
+  background: #000;
+  outline: none;
+}
+.help { max-width: 60em; text-align: center; margin: 0; color: #889; }
+#status { margin: 0; min-height: 1.4em; color: #f4c820; }
+kbd { background: #2a2a36; border-radius: 3px; padding: 0 5px; color: #eee; }
