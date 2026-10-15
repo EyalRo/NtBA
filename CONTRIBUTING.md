@@ -24,6 +24,13 @@ Either:
 | `make check` | Everything CI runs: fmt, clippy (`-D warnings`), tests, wasm build |
 | `make fmt` | Format the code |
 
+## Art
+
+The graphics are procedural for now (see `docs/ARCHITECTURE.md`). If you are a pixel artist, original
+sprite sheets (320x200 canvas, the palette in `crates/ntba-core/src/palette.rs`, at most 256
+colours) are the most valuable contribution — open an issue first so we can agree on a sheet format.
+Never submit art traced or copied from commercial games.
+
 ## Ground rules
 
 - Keep `make check` green; CI runs the same thing.

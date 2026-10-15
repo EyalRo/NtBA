@@ -47,6 +47,14 @@ minimap of the court showing where everyone is — as in *TV Sports: Basketball*
 Hold-and-release shot timing and fakes, steals/blocks, the full set of violations, time outs and
 substitutions, arcade vs simulation modes. See `context/genesis-manual-notes.md`.
 
+### Hand-authored sprites (replace the procedural art)
+Players, crowd, hoop and furniture are **procedural today**: code draws shaded shapes into the
+palette (`sprite.rs`, `people.rs`, `render.rs`). It reads as pixel art but is a stand-in. The goal
+is **hand-drawn sprite sheets** (original art, same 256-colour VGA-style palette and 320x200
+canvas) with proper animation frames — run, dribble, shoot, dunk, defend, celebrate — loaded in
+place of the generators. The sprite-building functions are the only code that needs to change.
+Contributions from pixel artists are welcome; see `CONTRIBUTING.md`.
+
 ### Presentation polish
-Hand-authored sprite sheets and more poses (dunks, defence), cheerleaders and photographers,
+More poses (dunks, defence), cheerleaders and photographers,
 crowd reactions, an exhibition/attract mode, a playoff mode with save codes, sound and music.

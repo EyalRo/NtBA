@@ -46,8 +46,9 @@ text, and a **selective outline** (every edge takes the darkest tone of the colo
 `people.rs` builds the figures from it: a skeleton-driven run cycle with forward kinematics for the
 legs and two-bone IK so the dribbling arm follows the ball, front/back versions for the end-on
 camera, and seated bench figures. Spectators in the crowd use the same toolkit at smaller scales.
-Everything is generated in code today; replacing it with hand-drawn sprite sheets in the same
-palette is a drop-in change inside those two modules.
+**Everything is procedural (generated in code) today, not hand-drawn sprite art.** Replacing it
+with hand-authored sprite sheets in the same palette is a drop-in change inside those two
+modules; the simulation and scene code only ask for "a person with this pose".
 
 ## Camera views
 
