@@ -227,9 +227,17 @@ your environment), add the game's origin to `ALLOWED_ORIGINS`, and put the Worke
 
 ## Known limitations and follow-ups
 
-* Not deployed yet: the Worker needs the owner's Cloudflare account, and `web/config.js` needs its URL.
-* Only tested in Chromium over loopback. Cross-network and cross-browser runs (Firefox, Safari) are
-  still to do; the cross-browser risk is the determinism assumption, which the hash check will catch.
+* Deployed: the Worker is live at `https://ntba-signaling.isdino.workers.dev` and the GitHub Pages site
+  has online play enabled. Smoke test on 2026-10-15: `/health`, origin check (403 for foreign origins),
+  `/ice` (STUN only) and the 426 for non-upgrade WebSocket requests all behave as designed. The rate
+  limit is per Cloudflare location and loose, so the 6/min room limit does not trip on exactly the 7th
+  request.
+* Live-tested in Chromium only, on one machine and network: host and join worked, both sides showed
+  the same screen with ping 50-67 ms, about 5 minutes of play ran without a desync, and Leave showed
+  the right message on the other side. Still to do: Firefox and Safari pairings (the cross-browser risk
+  is the determinism assumption, which the hash check will catch) and cross-network runs (home Wi-Fi
+  against cellular or a strict network) to decide whether TURN is needed.
+* Worker observability is not enabled yet, so requests do not appear in Workers Logs.
 * The input delay is fixed at 6 ticks; it could be chosen from the measured round trip.
 * A backgrounded browser tab stops sending and the peer times out after 5 s.
 * No reconnect, spectators or rollback; no native desktop transport yet (the protocol and session are
