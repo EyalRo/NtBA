@@ -33,6 +33,10 @@ peer-to-peer play, a native build, create-a-player, and â€” far in the future â€
 
 ## Play it
 
+**Online:** https://eyalro.github.io/NtBA/ (deployed from `main` by GitHub Actions).
+
+Locally:
+
 ```sh
 nix develop        # or install Rust via rustup; rust-toolchain.toml pins everything
 make serve         # builds the wasm and serves http://localhost:8080
