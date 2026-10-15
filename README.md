@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="web/box-art.jpg" alt="NtBA box art — Not the Basketball Association" width="360">
+</p>
+
 # NtBA — Not the Basketball Association
 
 An open-source, five-on-five basketball game in faithful late-1980s / early-1990s pixel art.
