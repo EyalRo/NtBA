@@ -4,3 +4,4 @@
 .direnv/
 node_modules/
 *.swp
+.wrangler/
