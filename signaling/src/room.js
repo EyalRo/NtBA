@@ -14,6 +14,9 @@ export class Room {
     if (url.pathname === '/init' && request.method === 'POST') {
       return this.init();
     }
+    if (url.pathname === '/exists') {
+      return new Response(null, { status: (await this.exists()) ? 200 : 404 });
+    }
     if (url.pathname === '/ws') {
       if (request.headers.get('Upgrade') !== 'websocket') {
         return new Response('expected a WebSocket upgrade', { status: 426 });
@@ -134,6 +137,9 @@ export class Room {
         // Already closed.
       }
     }
+    // deleteAll() leaves a scheduled alarm in place; remove it so a finished room does not
+    // wake up again just to expire.
+    await this.ctx.storage.deleteAlarm();
     await this.ctx.storage.deleteAll();
   }
 }

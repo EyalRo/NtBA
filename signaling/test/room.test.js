@@ -42,6 +42,7 @@ class FakeCtx {
     put: async (k, v) => void this.store.set(k, v),
     setAlarm: async (t) => void (this.alarm = t),
     deleteAll: async () => this.store.clear(),
+    deleteAlarm: async () => void (this.alarm = null),
   };
 }
 
@@ -175,4 +176,15 @@ test('the expiry alarm closes sockets and deletes the room', async () => {
   await room.alarm();
   assert.deepEqual(host.closed, { code: 1000, reason: 'room expired' });
   assert.equal(await room.exists(), false);
+});
+
+test('exists reports whether the room was created, and closing also cancels the alarm', async () => {
+  const probe = () => room.fetch(new Request('https://room/exists'));
+  assert.equal((await probe()).status, 404);
+  await room.init();
+  assert.equal((await probe()).status, 200);
+  assert.notEqual(ctx.alarm, null);
+  await room.close(1000, 'done');
+  assert.equal(ctx.alarm, null, 'the expiry alarm must be removed with the room');
+  assert.equal((await probe()).status, 404);
 });

@@ -51,7 +51,8 @@ export class PeerLink {
     this.role = role;
     let iceServers = [{ urls: 'stun:stun.cloudflare.com:3478' }];
     try {
-      const res = await fetch(`${this.base}/ice`);
+      // Naming the room lets the service hand out relay (TURN) credentials only to real matches.
+      const res = await fetch(`${this.base}/ice?room=${encodeURIComponent(code)}`);
       if (res.ok) iceServers = (await res.json()).iceServers ?? iceServers;
     } catch (err) {
       console.warn('[ntba-net] ICE server lookup failed, using public STUN only', err);

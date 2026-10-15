@@ -17,13 +17,23 @@ class_name = "Room"
 tag = "v1"
 new_sqlite_classes = ["Room"]
 
-# Per-IP limit on room creation / ICE lookups (the namespace id is any integer unique to your account).
+# Per-IP, per-route limits (namespace ids are integers unique to your account). The rate-limit
+# API is per Cloudflare location and deliberately permissive, so these curb casual abuse; they
+# are not an accounting system.
 [[ratelimits]]
-name = "LIMITER"
+name = "LIMITER"        # ICE lookups and WebSocket joins
 namespace_id = "740211"
 
   [ratelimits.simple]
-  limit = 20
+  limit = 30
+  period = 60
+
+[[ratelimits]]
+name = "ROOM_LIMITER"   # room creation: each room is a Durable Object, so keep this tight
+namespace_id = "740212"
+
+  [ratelimits.simple]
+  limit = 6
   period = 60
 
 # Optional TURN fallback. Never put these in this file: set them as secrets with

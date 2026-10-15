@@ -8,7 +8,7 @@ directly and this service is out of the loop.
 | --- | --- |
 | `POST /rooms` | Create a room, returns `{ "code": "K7M2QX", "ttl": 600 }` |
 | `GET /rooms/<code>/ws?role=host\|guest` | WebSocket to the room's Durable Object |
-| `GET /ice` | `{ "iceServers": [...] }`: Cloudflare STUN, plus short-lived TURN credentials if configured |
+| `GET /ice?room=<code>` | `{ "iceServers": [...] }`: Cloudflare STUN, plus short-lived TURN credentials if configured **and** the room exists |
 | `GET /health` | Liveness |
 
 ## How a room works
@@ -23,11 +23,26 @@ Nothing about players is stored, and signalling payloads and IP addresses are ne
 Why a Durable Object and not a plain Worker: separate requests for the same room can be served
 by different isolates, which do not share memory, so an in-memory room table is unreliable.
 
+## Security model
+
+There are **no accounts and no authentication on purpose**; the room code is the only secret
+and a match is two anonymous peers. What that means and what limits the damage:
+
+| Risk | Mitigation | Residual |
+| --- | --- | --- |
+| A website you do not control drives the service from visitors' browsers (CSRF, cross-site WebSocket hijacking) | Browsers always send `Origin`; anything outside `ALLOWED_ORIGINS` gets 403 before any work is done | `Origin` is not authentication: `curl` and scripts can omit it, so it only stops *browsers* on other sites |
+| Guessing a room code to join someone else's match | 6 characters from a 31-symbol alphabet (about 887 million codes), codes live at most `ROOM_TTL_SECONDS` (10 min), one host and one guest per room, joins are rate limited | A code seen over your shoulder or pasted in a public chat can be used by anyone, once, before your friend joins; treat it like a one-time invite |
+| Anonymous callers creating or probing many rooms (each is a Durable Object, so this costs money) | Separate per-IP limits: 6 room creations/min, 30 ICE lookups and joins/min; junk (non-WebSocket, bad role, bad code) is rejected in the Worker before any Durable Object is touched | The rate-limit API is per Cloudflare location and permissive, so a distributed flood is not stopped. Next steps if that ever happens: a Cloudflare Turnstile token on `POST /rooms`, and a billing alert on the account |
+| Free relay bandwidth (TURN) for strangers | TURN credentials are only issued to a caller who names a room that currently exists (`/ice?room=CODE`), last one hour, and need the secrets that are off by default | Anyone who can create a room can obtain relay credentials for an hour; keep the account's Realtime usage alert on |
+| Malicious peer | Room relays only `offer`, `answer`, `ice` JSON (8 KiB, 100 messages per socket), nothing else; the browser parses SDP/ICE as for any WebRTC app | A peer you connect to learns your IP address, as with any peer-to-peer game |
+| Log injection or sensitive data in logs | Logs are JSON lines; attacker-controlled values are length-bounded; IPs and signalling payloads are never logged | |
+| Rate limiter missing | Fails open (the service still works) but logs a WARN on every request | Check `wrangler.toml` bindings after deploying |
+
 ## Configure
 
 `wrangler.toml` holds the non-secret settings: `ALLOWED_ORIGINS` (browser origins allowed to
 use the service; add your own domain) and `ROOM_TTL_SECONDS`. Requests are rate limited per IP
-with a Workers rate-limit binding.
+with Workers rate-limit bindings (`ROOM_LIMITER` for room creation, `LIMITER` for the rest).
 
 TURN is optional. NAT pairs that cannot connect directly (symmetric NAT, some mobile networks)
 need a relay. To enable Cloudflare's TURN service (its pricing includes a monthly free
