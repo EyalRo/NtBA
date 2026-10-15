@@ -9,6 +9,7 @@ use std::cell::RefCell;
 
 use ntba_core::game::Game;
 use ntba_core::render::{self, Framebuffer};
+use ntba_core::replay::{InputLog, DETERMINISM_SEED, DETERMINISM_SEED_HASH, DETERMINISM_TICKS};
 use ntba_core::{SCREEN_H, SCREEN_W, TICK_HZ};
 
 struct State {
@@ -73,4 +74,33 @@ pub extern "C" fn ntba_tick_hz() -> u32 {
 #[no_mangle]
 pub extern "C" fn ntba_score(team: u32) -> u32 {
     with_state(|s| s.game.score.get(team as usize).copied().unwrap_or(0)).unwrap_or(0)
+}
+
+/// Replays the fixed synthetic input script and returns the low 32 bits of the final state
+/// hash. Together with `ntba_determinism_hash_hi` and the expected value it lets any build
+/// prove it simulates exactly like the reference (see `scripts/check-determinism.mjs`).
+#[no_mangle]
+pub extern "C" fn ntba_determinism_hash_lo() -> u32 {
+    determinism_hash() as u32
+}
+
+#[no_mangle]
+pub extern "C" fn ntba_determinism_hash_hi() -> u32 {
+    (determinism_hash() >> 32) as u32
+}
+
+#[no_mangle]
+pub extern "C" fn ntba_determinism_expected_lo() -> u32 {
+    DETERMINISM_SEED_HASH as u32
+}
+
+#[no_mangle]
+pub extern "C" fn ntba_determinism_expected_hi() -> u32 {
+    (DETERMINISM_SEED_HASH >> 32) as u32
+}
+
+fn determinism_hash() -> u64 {
+    InputLog::synthetic(DETERMINISM_SEED, DETERMINISM_TICKS)
+        .replay()
+        .state_hash()
 }

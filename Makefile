@@ -1,4 +1,4 @@
-.PHONY: all web serve test check fmt clean
+.PHONY: all web serve test check determinism fmt clean
 
 all: check web
 
@@ -19,6 +19,10 @@ check:
 	cargo clippy --workspace --all-targets -- -D warnings
 	cargo test --workspace
 	cargo build -p ntba-wasm --target wasm32-unknown-unknown
+
+# Cross-build determinism: native tests pin the hash, this checks the wasm build agrees.
+determinism: web
+	node scripts/check-determinism.mjs
 
 fmt:
 	cargo fmt --all
