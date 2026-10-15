@@ -4,6 +4,8 @@
 
 # NtBA — Not the Basketball Association
 
+**▶ [Play it in your browser: eyalro.github.io/NtBA](https://eyalro.github.io/NtBA/)**
+
 An open-source, five-on-five basketball game in faithful late-1980s / early-1990s pixel art.
 Rust compiled to WebAssembly, played in the browser. Independent project — no affiliation with any
 real league; no real teams or players.
