@@ -92,6 +92,16 @@ by the project owner as "where we would like to get to"). What stands out, and w
 - Not copied yet: the second kit (no opposition yet), distinct shadows under players, the lane
   painted in team colour with a dashed ring (we have the ring, in blue).
 
+## Resolution and colours of the references
+
+All the screenshots we studied are **320x200** (the TV Sports and DOS captures are exactly that
+size; the others are 2x/4x upscales of it). That was VGA's mode 13h with **256 colours** on DOS,
+32 colours (+ extra-half-brite) on the Amiga, and 16 on EGA; the Genesis showed 64 of 512 at 320x224.
+These games were shown on 4:3 monitors, so pixels were slightly taller than wide. NtBA's choice:
+320x200, a 256-colour VGA-style palette (we use under 100), 6-bit channels, 4:3 display. We do
+*not* use 640x480: it was an option on PC (16 colours) but the genre did not use it and it would
+change the look.
+
 ## How NtBA compares today
 
 The proof of concept was reworked to chase this look (see `docs/screenshot.png`). Status:
@@ -103,10 +113,10 @@ The proof of concept was reworked to chase this look (see `docs/screenshot.png`)
 | Hardwood | Multi-tone planks with breaks | Four close tones, random lengths, butt joints, centre logo | Grain, wear |
 | Lane colour | Yellow / blue | Blue lane and centre circle | Centre-circle logo |
 | Hoop | Backboard, arm, stanchion, net, shot clock | All of these; shot clock on the stanchion | Backboard shatter/vibration, net swish |
-| Players | Numbered jerseys, varied looks | 34 px sprites, numbers, 3 skin tones + blond, run cycle with bob, black shoes = controlled | Hand-authored sprites, more poses (dunk, defend) |
+| Players | Numbered jerseys, varied looks, shaded and outlined | 34 px shaded outlined sprites, skeleton run cycle, IK dribble arm, numbers, 3 skin tones and hair colours, black shoes = controlled | Hand-authored sheets, more poses (dunk, defend) |
 | Scoreboard | Amber dot-matrix, framed (compact in the later game) | Compact framed panel, dot-matrix digits | Team names, period |
 | Bench & table | Bench with coaches, scorer's table, ad boards | Both benches, standing coach, scorer's table, officials, ad boards | Cheerleaders, photographers, animation |
-| Crowd | Tiers, waving arms | Parallax tiers with aisles and waving fans | More variety and reactions to scores |
+| Crowd | Tiers, waving arms | Five parallax rows of shaded fans with aisles, waving arms and camera flashes | Signs and banners, reactions to scores |
 | Shot mechanic | Hold and release at the apex, tap = fake | Instant shot | See genesis-manual-notes.md |
 
 None of this is required for the current milestone (single-player versus a bot); it is a

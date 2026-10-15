@@ -20,10 +20,34 @@ canvas  ◀─ RGBA bytes ◀── ntba_framebuffer() ◀ ntba_render() ◀ ren
   then renders once per animation frame. The core never reads a clock.
 - Input is a `u8` bitmask (`ntba_core::input`). That keeps replays, tests and a future
   lock-step P2P protocol (exchange one byte per tick) trivial.
-- The core renders into a 320x200 paletted framebuffer (32 colours, `render::PALETTE`; the Genesis
-  could show 64, DOS 16) and expands it to RGBA. The page scales the canvas with CSS `image-rendering: pixelated`.
+- The core renders into a 320x200 paletted framebuffer (see *Period constraints* below) and
+  expands it to RGBA. The page scales the canvas with CSS `image-rendering: pixelated`.
 - The wasm module uses a C ABI, not `wasm-bindgen`, so the only build requirement is the
   `wasm32-unknown-unknown` target. Keep the exported surface tiny (`ntba-wasm/src/lib.rs`).
+
+## Period constraints
+
+We deliberately work within 1990 PC limits, which is what the reference games used:
+
+- **320x200**, like VGA mode 13h (the Amiga/DOS screenshots we studied are all 320x200). The page
+  displays it at **4:3**, as CRTs did, so pixels are slightly taller than wide.
+- **Palette of at most 256 colours** (`palette::MAX_COLOURS`), 6 bits per channel (`palette::vga`).
+  We use fewer than 100, authored as **4-tone ramps** per material (dark, shadow, base, light) so
+  shapes are shaded by hand-picking tones rather than by blending.
+- No true colour, alpha or blending: shadows darken by remapping palette indices, soft edges and
+  lighting use **ordered dithering** (`render::bayer`), as period games did.
+- A test (`palette::tests`, `render::tests`) enforces the palette limit and that frames stay
+  inside it.
+
+## Sprites
+
+`sprite.rs` is a tiny paletted-canvas toolkit: shaded ellipses and capsules lit from the top-left,
+text, and a **selective outline** (every edge takes the darkest tone of the colour it borders).
+`people.rs` builds the figures from it: a skeleton-driven run cycle with forward kinematics for the
+legs and two-bone IK so the dribbling arm follows the ball, front/back versions for the end-on
+camera, and seated bench figures. Spectators in the crowd use the same toolkit at smaller scales.
+Everything is generated in code today; replacing it with hand-drawn sprite sheets in the same
+palette is a drop-in change inside those two modules.
 
 ## Camera views
 
@@ -33,7 +57,8 @@ mean. The ball position drives it with hysteresis (`END_VIEW_ENTER_X`, `END_VIEW
 midcourt, `render::project_end`), and back to the **side** camera in transition. In the end-on view
 the direction keys are screen-relative: Up runs toward the basket, Left/Right strafe. A direction
 held across a cut keeps its old meaning until released, so the cut never reverses a run mid-stride.
-The renderer picks sprites (`draw_person` / `draw_person_end`) and projections from `Game::view`.
+The renderer picks sprites (`people::side_person` / `people::end_person`) and projections from
+`Game::view`.
 
 ## Rendering notes
 
@@ -44,8 +69,7 @@ The renderer picks sprites (`draw_person` / `draw_person_end`) and projections f
   `NEAR_SCALE` px/ft between the far and near sidelines, which gives the gently slanted baselines of
   the originals; the floor is drawn by inverting that mapping per pixel (`draw_court`).
 - Hardwood planks, lines and lane colours are computed from world coordinates, so they stay put
-  while the camera moves. Sprites (`draw_person`, `draw_seated`) are drawn procedurally with
-  rectangles; replace them with hand-authored sheets when art is ready.
+  while the camera moves; lighting and dithering are applied per screen pixel.
 - The player you control wears black shoes, as in the Genesis manual.
 
 ## Simulation rules of thumb

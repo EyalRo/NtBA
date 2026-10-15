@@ -9,7 +9,10 @@
 pub mod font;
 pub mod game;
 pub mod input;
+pub mod palette;
+pub mod people;
 pub mod render;
+pub mod sprite;
 
 /// Virtual framebuffer size (pixels). Scaled up with nearest-neighbour by the host.
 pub const SCREEN_W: usize = 320;

@@ -14,6 +14,10 @@ real league; no real teams or players.
 
 Our art and content are original; see [context/](context/) for the reference notes.
 
+**Period constraints, on purpose:** 320x200 (displayed at 4:3), a palette of at most 256 colours
+(we use under 100, in hand-built shading ramps), dithered lighting, and no blending — see
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 **Status: proof of concept.** One team, no defence: run, pass, shoot, score against a shot clock
 and a 5-minute game clock. See [docs/VISION.md](docs/VISION.md) for where this is headed and
 [docs/ROADMAP.md](docs/ROADMAP.md) for milestones and the wishlist (opposing bot team, online
