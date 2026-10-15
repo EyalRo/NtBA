@@ -1,8 +1,8 @@
 # NtBA — Vision and handoff
 
 This is the original project brief the repository was started from, kept verbatim in spirit so
-contributors share the same goals. See [ARCHITECTURE.md](ARCHITECTURE.md) for how the code is
-organised today and the root [README](../README.md) for how to run it.
+contributors share the same goals. See [Architecture](Architecture) for how the code is
+organised today and the [README](https://github.com/EyalRo/NtBA#readme) for the short version.
 
 ## What this is
 
@@ -57,7 +57,7 @@ the 1989 NBA championship. Nostalgia rarely matches the box score.
 ## Open questions / deferred decisions
 
 - Player identities and rosters — deliberately out of scope initially.
-- Exact internal resolution and palette — tune against reference research (see `context/`).
+- Exact internal resolution and palette — tune against reference research (see [Reference Games](Reference-Games)).
 - Online transport details — P2P is the direction; the concrete protocol is for implementation.
 - Desktop packaging — planned, but secondary to a stable browser game.
 
@@ -69,7 +69,7 @@ Beyond the 1989 EA game, two other games shape the target:
   switches between a sideline view for transition play and an end-on view looking at the basket
   for half-court play, and it presents the game as a TV broadcast with a desk presenter and mock
   commercials. It also lets players create their own players. Those last three ideas are on the
-  [wishlist](ROADMAP.md) (presentation is far future).
+  [Roadmap](Roadmap) and the [issue tracker](https://github.com/EyalRo/NtBA/issues) (presentation is far future).
 - A slightly later EA basketball game is the reference for the floor, sprite and HUD look.
 
-See `context/` for notes and sources. As always, everything we ship is original.
+See [Reference Games](Reference-Games) for notes and sources. As always, everything we ship is original.

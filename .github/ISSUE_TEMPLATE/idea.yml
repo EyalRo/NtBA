@@ -1,0 +1,22 @@
+name: Idea
+description: Suggest a feature, mode, or anything else you'd like to see in NtBA. No idea is too small or too wild.
+labels: ["idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: The idea
+      description: What would you like to see?
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why it would be great
+      description: What does it add to the game? Any games or references that do it well?
+  - type: checkboxes
+    id: help
+    attributes:
+      label: Want to help build it?
+      options:
+        - label: I'd like to work on this myself

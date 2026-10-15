@@ -1,9 +1,9 @@
-# Context: *Lakers versus Celtics and the NBA Playoffs* (1989)
+# Reference games: *Lakers versus Celtics and the NBA Playoffs* (1989) and friends
 
 Reference material for contributors who want to match the look, feel and pacing of the game NtBA
-is inspired by. This folder holds **links, our own notes and a small set of reference
-screenshots**. The screenshots are copyrighted by EA and kept for reference only; nothing in this
-folder may be copied into the game (the project's rule is *own everything*). Prefer linking to
+is inspired by. This page holds **links, our own notes and a small set of reference
+screenshots**. The screenshots are copyrighted by EA and kept for reference only; nothing here
+may be copied into the game (the project's rule is *own everything*). Prefer linking to
 further screenshots over adding more, and put your own measurements and observations in notes.
 
 ## Other games we reference
@@ -11,16 +11,16 @@ further screenshots over adding more, and put your own measurements and observat
 - ***TV Sports: Basketball*** (Cinemaware, 1990) — the graphics-fidelity target and the source of
   the multi-camera idea (side view for backcourt/transition, end-on view for half-court and free
   throws). Also has create-a-player, a desk presenter and mock commercials (wishlist, far future).
-  Notes: [visual-notes.md](visual-notes.md).
+  Notes: [Visual Notes](Visual-Notes).
 - A slightly later EA basketball game (title not confirmed) — floor/sprite/HUD look; screenshot in
-  [screenshots/](screenshots/).
+  [Reference Screenshots](Reference-Screenshots).
 
 ## Screenshots and notes
 
-- [screenshots/](screenshots/) — reference-only screenshots of the DOS and Genesis versions
+- [images](images/) — reference-only screenshots of the DOS and Genesis versions
   (copyrighted by EA, not GPL, not for use as assets — see the README in that folder).
-- [visual-notes.md](visual-notes.md) — what the original looks like and how NtBA compares.
-- [genesis-manual-notes.md](genesis-manual-notes.md) — controls, rules and options from the manual.
+- [Visual Notes](Visual-Notes) — what the original looks like and how NtBA compares.
+- [Genesis Manual Notes](Genesis-Manual-Notes) — controls, rules and options from the manual.
 
 ## Sources
 
@@ -31,7 +31,7 @@ further screenshots over adding more, and put your own measurements and observat
 - Compute! magazine review (issue 117) — rules, controls, sound criticism:
   <https://atarimagazines.com/compute/issue117/pp104_reviews_LAKERS_VERSUS_CELTICS_AND_THE_NBA_PLAYOFFS.php>
 - Genesis US manual (controls, rules, options): <https://segaretro.org/images/1/1d/Lakers_Vs_Celtics_MD_US_Manual.pdf>
-  — our summary is in [genesis-manual-notes.md](genesis-manual-notes.md)
+  — our summary is in [Genesis Manual Notes](Genesis-Manual-Notes)
 - Lilura1 — blog post on the 1989 IBM PC / MS-DOS version (screenshot collage: title, stats
   screens, gameplay): <https://lilura1.blogspot.com/2022/04/Lakers-versus-Celtics-NBA-Playoffs-IBM-PC-MS-DOS-1989-Electronic-Arts.html>
   (not yet summarised here — the page could not be fetched from the build environment)
@@ -53,6 +53,6 @@ further screenshots over adding more, and put your own measurements and observat
 
 ## Contributing notes here
 
-Add observations as Markdown files in this folder, e.g. `palette-notes.md` (colour counts,
-court-line colours), `camera-notes.md` (perspective, sprite heights relative to court), or
-`pacing-notes.md` (how long a possession takes). Always cite where a fact comes from.
+Add observations as new wiki pages, e.g. *Palette Notes* (colour counts, court-line colours),
+*Camera Notes* (perspective, sprite heights relative to court) or *Pacing Notes* (how long a
+possession takes). Always cite where a fact comes from.
