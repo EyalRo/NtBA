@@ -1,7 +1,9 @@
 # Roadmap
 
 The **plans and ideas live in the [issue tracker](https://github.com/EyalRo/NtBA/issues)** so
-anyone can comment, vote with a 👍, or pick one up. This page only gives the big picture.
+anyone can comment, vote with a 👍, or pick one up. The checklist version is the
+[Roadmap overview](https://github.com/EyalRo/NtBA/issues/34) tracking issue. This page only gives the
+big picture.
 
 ## Milestones
 
