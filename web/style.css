@@ -2,8 +2,8 @@
 html, body { margin: 0; height: 100%; background: #111118; color: #ccc; font: 14px/1.4 ui-monospace, monospace; }
 main { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; box-sizing: border-box; }
 canvas {
-  width: min(100vw - 24px, (100vh - 120px) * 1.6);
-  aspect-ratio: 8 / 5;
+  width: min(100vw - 24px, (100vh - 120px) * 1.3333);
+  aspect-ratio: 4 / 3; /* 320x200 was shown on 4:3 CRTs: slightly tall pixels */
   image-rendering: pixelated;   /* nearest-neighbour scaling */
   image-rendering: crisp-edges;
   image-rendering: pixelated;
