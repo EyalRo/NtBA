@@ -2,7 +2,7 @@
 html, body { margin: 0; height: 100%; background: #111118; color: #ccc; font: 14px/1.4 ui-monospace, monospace; }
 main { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; box-sizing: border-box; }
 canvas {
-  width: min(100vw - 24px, (100vh - 120px) * 1.3333);
+  width: min(100vw - 24px, (100vh - 290px) * 1.3333);
   aspect-ratio: 4 / 3; /* 320x200 was shown on 4:3 CRTs: slightly tall pixels */
   image-rendering: pixelated;   /* nearest-neighbour scaling */
   image-rendering: crisp-edges;
@@ -13,3 +13,8 @@ canvas {
 .help { max-width: 60em; text-align: center; margin: 0; color: #889; }
 #status { margin: 0; min-height: 1.4em; color: #f4c820; }
 kbd { background: #2a2a36; border-radius: 3px; padding: 0 5px; color: #eee; }
+h1 { margin: 0; font-size: 22px; letter-spacing: 2px; color: #e86818; text-align: center; }
+h1 span { display: block; font-size: 13px; letter-spacing: 1px; font-weight: normal; color: #889; }
+.join { max-width: 60em; text-align: center; padding: 8px 14px; border: 1px solid #2a2a36; border-radius: 4px; background: #181822; }
+.join a { color: #f4c820; font-weight: bold; white-space: nowrap; }
+.join a:hover, .join a:focus-visible { color: #fff; }
