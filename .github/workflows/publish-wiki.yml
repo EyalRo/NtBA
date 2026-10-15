@@ -1,0 +1,31 @@
+name: Publish wiki (one-off)
+
+# Throwaway: copies the pages in wiki/ into the GitHub Wiki when this branch is pushed.
+# Never merged to main; the branch is deleted afterwards.
+on:
+  push:
+    branches: [wiki-publish]
+
+permissions:
+  contents: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/checkout@v7
+        with:
+          repository: ${{ github.repository }}.wiki
+          path: wiki-repo
+      - name: Copy pages
+        run: cp -r wiki/. wiki-repo/
+      - name: Commit and push
+        working-directory: wiki-repo
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --quiet && { echo "Nothing to publish"; exit 0; }
+          git commit -m "Publish wiki pages: Online Play, How to Play, Signalling Service and related edits (from ${GITHUB_SHA::7})"
+          git push
