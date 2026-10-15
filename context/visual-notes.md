@@ -48,6 +48,30 @@ NtBA proof of concept (320x200, 16 colours, whole court on screen). Written by u
 - A text prompt ("PRESS START TO BEGIN") and team scores in the bottom strip on the pre-game
   screen. Shot clock shown at the baskets, not only on the scoreboard.
 
+## *TV Sports: Basketball* (Cinemaware, 1990): camera views and presentation
+
+Five screenshots supplied by the project owner (not stored in this repository). The owner's
+verdict: this is the graphics fidelity we are after.
+
+- **End-on half-court view.** Looking at the basket from midcourt: backboard and rim at the top
+  centre, stands with red steps and crowd in the top corners, referee and coaches behind the
+  baseline, a light orange court with pale lines and a cream lane. Players are seen from behind and
+  from the front. A free-throw situation uses the same view, with players lined up along the lane.
+- **Side view for the backcourt.** A horizontal view of the centre circle with the pack of players
+  running, used when the ball is out of the frontcourt. Above it is a **stats panel**: both team
+  names, time outs, a roster list with jersey numbers, names, points and personal fouls, and a
+  small **court minimap** with the clock in the middle.
+- **TV presentation.** A mock **commercial** interstitial (a framed beer ad with a slogan) and a
+  **presenter** at a desk with a microphone in front of the arena, with subtitles — the game plays
+  like a broadcast.
+
+What NtBA did with it: the simulation now switches between a side view and an end-on view
+(`Game::view`), with screen-relative controls on the end-on view (see
+[../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)). The end-on view has its own front/back
+sprites, a face-on backboard with the shot clock above it, staff behind the baseline and a court
+that converges toward the baseline. Not done yet: the stats panel and minimap, a dedicated
+free-throw view, and — far future — the presenter and commercials ([roadmap](../docs/ROADMAP.md)).
+
 ## Target look: a slightly later EA game
 
 [screenshots/later-ea-game-target-look.png](screenshots/later-ea-game-target-look.png) (provided

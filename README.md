@@ -1,15 +1,26 @@
 # NtBA — Not the Basketball Association
 
-An open-source, five-on-five basketball game in faithful late-1980s pixel art, inspired by
-*Lakers versus Celtics and the NBA Playoffs* (Electronic Arts, 1989). Rust compiled to
-WebAssembly, played in the browser. Independent project — no affiliation with any real league; no
-real teams or players.
+An open-source, five-on-five basketball game in faithful late-1980s / early-1990s pixel art.
+Rust compiled to WebAssembly, played in the browser. Independent project — no affiliation with any
+real league; no real teams or players.
+
+## Inspiration
+
+| Game | What we take from it |
+| --- | --- |
+| *Lakers versus Celtics and the NBA Playoffs* (Electronic Arts, 1989) | The genre anchor: pace, rules and a televised-game feel — lineup introductions, halftime show |
+| *TV Sports: Basketball* (Cinemaware, 1990) | The graphics fidelity we are after, and its **camera views**: a side view for the backcourt and an end-on view for half-court play. Also on the wishlist: its create-a-player mode, presenter and mock commercials |
+| A slightly later EA basketball game | The floor, sprite and scoreboard look (subtle planks, large animated players, compact HUD) |
+
+Our art and content are original; see [context/](context/) for the reference notes.
 
 **Status: proof of concept.** One team, no defence: run, pass, shoot, score against a shot clock
-and a 5-minute game clock. See [docs/VISION.md](docs/VISION.md) for where this is headed
-(opposing bot team, online peer-to-peer play, a native build).
+and a 5-minute game clock. See [docs/VISION.md](docs/VISION.md) for where this is headed and
+[docs/ROADMAP.md](docs/ROADMAP.md) for milestones and the wishlist (opposing bot team, online
+peer-to-peer play, a native build, create-a-player, and — far in the future — TV presentation).
 
-![NtBA proof of concept](docs/screenshot.png)
+![NtBA side view](docs/screenshot.png)
+![NtBA end-on half-court view](docs/screenshot-end-view.png)
 
 ## Play it
 
@@ -22,7 +33,7 @@ Open http://localhost:8080 and click the page if keys don't respond.
 
 | Key | Action |
 | --- | --- |
-| Arrows / WASD | Move the highlighted player |
+| Arrows / WASD | Move the highlighted player (on the end-on half-court view, Up runs toward the basket) |
 | `X` / `K` | Shoot (3 pts from beyond the arc; farther shots miss more often) |
 | `Z` / `J` | Pass to the teammate in the direction you hold (nearest if none) |
 | `C` / Space | Switch player while the ball is loose |
@@ -37,7 +48,7 @@ Without Nix: `rustup show && make serve` (needs Python 3 and `make`).
 | `crates/ntba-core` | Simulation, rules and software pixel renderer (platform independent) |
 | `crates/ntba-wasm` | WebAssembly build exposing the core through a small C ABI |
 | `web/` | Static page: canvas, keyboard, fixed 60 Hz tick loop |
-| `docs/` | [Vision](docs/VISION.md) and [architecture](docs/ARCHITECTURE.md) |
+| `docs/` | [Vision](docs/VISION.md), [roadmap and wishlist](docs/ROADMAP.md) and [architecture](docs/ARCHITECTURE.md) |
 | `context/` | Links and notes about the 1989 original |
 | `flake.nix`, `rust-toolchain.toml` | Reproducible dev shell / pinned toolchain |
 

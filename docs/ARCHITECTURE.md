@@ -25,6 +25,16 @@ canvas  ◀─ RGBA bytes ◀── ntba_framebuffer() ◀ ntba_render() ◀ ren
 - The wasm module uses a C ABI, not `wasm-bindgen`, so the only build requirement is the
   `wasm32-unknown-unknown` target. Keep the exported surface tiny (`ntba-wasm/src/lib.rs`).
 
+## Camera views
+
+The simulation owns a `View` (`Side` or `End`) because the view changes what the direction keys
+mean. The ball position drives it with hysteresis (`END_VIEW_ENTER_X`, `END_VIEW_EXIT_X` in
+`game.rs`): in the frontcourt the game cuts to the **end-on** camera (looking at the basket from
+midcourt, `render::project_end`), and back to the **side** camera in transition. In the end-on view
+the direction keys are screen-relative: Up runs toward the basket, Left/Right strafe. A direction
+held across a cut keeps its old meaning until released, so the cut never reverses a run mid-stride.
+The renderer picks sprites (`draw_person` / `draw_person_end`) and projections from `Game::view`.
+
 ## Rendering notes
 
 - The camera scrolls horizontally to follow the ball (`Framebuffer::update_camera`, visual only,

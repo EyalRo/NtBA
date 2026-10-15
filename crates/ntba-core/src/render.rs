@@ -7,7 +7,7 @@
 //! a scorer's table behind the far sideline, and an amber dot-matrix scoreboard.
 
 use crate::font::{glyph, text_width, GLYPH_W};
-use crate::game::{BallState, Game, Phase, HOOP_Y, RIM_Z};
+use crate::game::{BallState, Game, Phase, View, HOOP_X, HOOP_Y, RIM_Z};
 use crate::{COURT_L, COURT_W, SCREEN_H, SCREEN_W};
 
 // Palette indices. 32 colours; the Genesis could show 64, the DOS version 16.
@@ -88,13 +88,21 @@ const Z_PX: f32 = 5.2; // screen pixels per foot of height
 const CAM_MIN: f32 = 28.0;
 const CAM_MAX: f32 = COURT_L - 28.0;
 const FAR_SCALE: f32 = 4.2; // pixels per foot along x at the far sideline
-const NEAR_SCALE: f32 = 5.9; // ... and at the near sideline
+const NEAR_SCALE: f32 = 5.9;
+
+// End-on view (looking at the right-hand basket from midcourt).
+const END_BASE_Y: f32 = 56.0; // screen row of the baseline
+const END_KY: f32 = 4.4; // screen rows per foot of depth
+const END_ZPX: f32 = 4.0; // screen pixels per foot of height
+const END_W_FAR: f32 = 5.0; // pixels per foot of court width at the baseline
+const END_W_SLOPE: f32 = 0.07; // ...growing by this much per foot toward the camera // ... and at the near sideline
 
 pub struct Framebuffer {
     pub idx: Vec<u8>,
     pub rgba: Vec<u8>,
     cam_x: f32,
     cam_ready: bool,
+    last_view: Option<View>,
 }
 
 impl Default for Framebuffer {
@@ -110,6 +118,7 @@ impl Framebuffer {
             rgba: vec![255; SCREEN_W * SCREEN_H * 4],
             cam_x: COURT_L / 2.0,
             cam_ready: false,
+            last_view: None,
         }
     }
 
@@ -227,24 +236,86 @@ pub fn project(cam_x: f32, x: f32, y: f32, z: f32) -> (i32, i32) {
     (sx.round() as i32, sy.round() as i32)
 }
 
-pub fn draw(g: &Game, fb: &mut Framebuffer) {
-    fb.update_camera(g);
-    let cam = fb.cam_x;
-    fb.rect(0, 0, SCREEN_W as i32, SCREEN_H as i32, APRON);
-    draw_crowd(fb, cam, g.ticks);
-    draw_bench_area(fb, cam);
-    draw_court(fb, cam);
-    for mirror in [false, true] {
-        draw_hoop_back(fb, cam, mirror, g.shot_clock);
+/// End-on projection. Depth `d` is the distance in front of the right-hand baseline; court
+/// width runs across the screen with the near sideline (y = 50) on the left.
+pub fn project_end(x: f32, y: f32, z: f32) -> (i32, i32) {
+    let d = COURT_L - x;
+    let sx = 160.0 - (y - COURT_W / 2.0) * end_w(d);
+    let sy = END_BASE_Y + d * END_KY - z * END_ZPX;
+    (sx.round() as i32, sy.round() as i32)
+}
+
+fn end_w(d: f32) -> f32 {
+    END_W_FAR + END_W_SLOPE * d
+}
+
+/// The active camera: the view plus (for the side view) the scroll position.
+#[derive(Clone, Copy)]
+struct Cam {
+    view: View,
+    x: f32,
+}
+
+impl Cam {
+    fn project(self, x: f32, y: f32, z: f32) -> (i32, i32) {
+        match self.view {
+            View::Side => project(self.x, x, y, z),
+            View::End => project_end(x, y, z),
+        }
     }
-    draw_entities(g, fb, cam);
-    for mirror in [false, true] {
-        draw_rim_and_net(fb, cam, mirror);
+
+    fn z_px(self) -> f32 {
+        match self.view {
+            View::Side => Z_PX,
+            View::End => END_ZPX,
+        }
+    }
+}
+
+pub fn draw(g: &Game, fb: &mut Framebuffer) {
+    if fb.last_view != Some(g.view) {
+        fb.last_view = Some(g.view); // a camera cut: don't ease across it
+        fb.cam_ready = false;
+    }
+    fb.update_camera(g);
+    let cam = Cam {
+        view: g.view,
+        x: fb.cam_x,
+    };
+    match g.view {
+        View::Side => draw_side_scene(g, fb, cam),
+        View::End => draw_end_scene(g, fb, cam),
     }
     draw_bottom_strip(fb);
     draw_scoreboard(g, fb);
     draw_overlays(g, fb);
     fb.expand();
+}
+
+fn draw_side_scene(g: &Game, fb: &mut Framebuffer, cam: Cam) {
+    fb.rect(0, 0, SCREEN_W as i32, SCREEN_H as i32, APRON);
+    draw_crowd(fb, cam.x, g.ticks);
+    draw_bench_area(fb, cam.x);
+    draw_court(fb, cam.x);
+    for mirror in [false, true] {
+        draw_hoop_back(fb, cam.x, mirror, g.shot_clock);
+    }
+    draw_entities(g, fb, cam);
+    for mirror in [false, true] {
+        draw_rim_and_net(fb, cam.x, mirror);
+    }
+}
+
+fn draw_end_scene(g: &Game, fb: &mut Framebuffer, cam: Cam) {
+    fb.rect(0, 0, SCREEN_W as i32, SCREEN_H as i32, APRON);
+    draw_crowd(fb, COURT_L / 2.0, g.ticks);
+    fb.rect(72, 0, 176, 36, WALL); // dark wall behind the basket
+    fb.rect(0, 48, SCREEN_W as i32, 8, APRON);
+    draw_end_staff(fb);
+    draw_court_end(fb);
+    draw_end_hoop_back(fb, g.shot_clock);
+    draw_entities(g, fb, cam);
+    draw_end_rim_and_net(fb);
 }
 
 fn hash(a: u32, b: u32) -> u32 {
@@ -452,22 +523,22 @@ fn near(a: f32, b: f32, tol: f32) -> bool {
 
 /// True when (`dx`, `dy`) feet from a circle's centre lies on its ring, with a line about one
 /// screen pixel wide regardless of the local horizontal/vertical scale.
-fn ring(dx: f32, dy: f32, radius: f32, s: f32) -> bool {
+fn ring(dx: f32, dy: f32, radius: f32, kx: f32, ky: f32) -> bool {
     let d = (dx * dx + dy * dy).sqrt();
     if d < 0.001 {
         return false;
     }
-    let (gx, gy) = (s * dx / d, PX_PER_FT_Y * dy / d);
+    let (gx, gy) = (kx * dx / d, ky * dy / d);
     let scale = (gx * gx + gy * gy).sqrt();
     (d - radius).abs() < 0.6 / scale
 }
 
 /// Colour of the hardwood at a court position (feet), markings included. `s` is the local
-/// horizontal pixels-per-foot so line widths stay about one pixel.
-fn floor_colour(wx: f32, wy: f32, s: f32) -> u8 {
+/// pixels-per-foot along world x (`kx`) and y (`ky`) so line widths stay about one pixel.
+fn floor_colour(wx: f32, wy: f32, kx: f32, ky: f32) -> u8 {
     let mx = wx.min(COURT_L - wx); // everything but the centre line is symmetric
-    let ltx = 0.6 / s; // half line width along x (feet)
-    let lty = 0.6 / PX_PER_FT_Y; // half line width along y (feet)
+    let ltx = 0.6 / kx; // half line width along x (feet)
+    let lty = 0.6 / ky; // half line width along y (feet)
     let (hx, hy) = (mx - 5.25, wy - HOOP_Y);
     let (fx, fy) = (mx - 19.0, wy - HOOP_Y);
     let (cx, cy) = (wx - COURT_L / 2.0, wy - HOOP_Y);
@@ -478,11 +549,11 @@ fn floor_colour(wx: f32, wy: f32, s: f32) -> u8 {
         || wy > COURT_W - 1.6 * lty
         || mx < 1.6 * ltx
         || near(wx, COURT_L / 2.0, ltx)
-        || ring(cx, cy, 6.0, s)
+        || ring(cx, cy, 6.0, kx, ky)
         || (mx < 19.0 && (near(wy, 17.0, lty) || near(wy, 33.0, lty)))
         || (near(mx, 19.0, ltx) && in_lane)
-        || (ring(fx, fy, 6.0, s) && (mx >= 19.0 || (wy * 1.4) as i32 & 1 == 0))
-        || (ring(hx, hy, 23.75, s) && hy.abs() < 22.0 && mx > 5.25)
+        || (ring(fx, fy, 6.0, kx, ky) && (mx >= 19.0 || (wy * 1.4) as i32 & 1 == 0))
+        || (ring(hx, hy, 23.75, kx, ky) && hy.abs() < 22.0 && mx > 5.25)
         || (mx < 14.0 && (near(wy, 3.0, lty) || near(wy, COURT_W - 3.0, lty)));
     if line {
         return BLACK;
@@ -527,7 +598,7 @@ fn draw_court(fb: &mut Framebuffer, cam: f32) {
         for sx in 0..SCREEN_W as i32 {
             let wx = cam + (sx as f32 - 160.0) / s;
             if (0.0..=COURT_L).contains(&wx) {
-                fb.px(sx, sy, floor_colour(wx, wy, s));
+                fb.px(sx, sy, floor_colour(wx, wy, s, PX_PER_FT_Y));
             }
         }
     }
@@ -617,6 +688,78 @@ fn draw_rim_and_net(fb: &mut Framebuffer, cam: f32, mirror: bool) {
     }
 }
 
+fn draw_court_end(fb: &mut Framebuffer) {
+    for sy in END_BASE_Y as i32..184 {
+        let d = (sy as f32 - END_BASE_Y) / END_KY;
+        let wx = COURT_L - d;
+        let w = end_w(d);
+        for sx in 0..SCREEN_W as i32 {
+            let wy = COURT_W / 2.0 - (sx as f32 - 160.0) / w;
+            if (0.0..=COURT_W).contains(&wy) && wx >= 0.0 {
+                fb.px(sx, sy, floor_colour(wx, wy, END_KY, w));
+            }
+        }
+    }
+}
+
+/// Coaches, photographers and the referee behind the baseline.
+fn draw_end_staff(fb: &mut Framebuffer) {
+    for (k, y) in [3.0_f32, 9.0, 41.0, 47.0].iter().enumerate() {
+        let (sx, sy) = project_end(97.0, *y, 0.0);
+        let mut look = COACH_LOOK;
+        look.skin = [SKIN_LIGHT, SKIN_DARK, SKIN_MID, SKIN_LIGHT][k];
+        draw_person_end(fb, sx, sy, false, &look, STILL, false);
+    }
+    let (sx, sy) = project_end(95.0, 53.0, 0.0);
+    draw_person_end(fb, sx, sy, false, &REF_LOOK, STILL, false);
+}
+
+/// Stanchion, backboard (seen face-on) and the shot clock above it. The board is placed
+/// relative to the rim, not by true depth, so it stays on screen like in the original.
+fn draw_end_hoop_back(fb: &mut Framebuffer, shot_clock: f32) {
+    let (rx, ry) = project_end(HOOP_X, HOOP_Y, RIM_Z);
+    let (bx, by) = project_end(COURT_L + 3.0, HOOP_Y, 0.0);
+    fb.rect(bx - 8, by - 9, 16, 9, PAINT);
+    fb.rect(bx - 8, by - 9, 4, 9, PAINT_DARK);
+    fb.rect(rx - 1, ry - 4, 3, by - 9 - (ry - 4), STEEL);
+    fb.rect(rx - 14, ry - 19, 29, 16, STEEL);
+    fb.rect(rx - 13, ry - 18, 27, 14, WHITE);
+    fb.rect(rx - 5, ry - 13, 11, 8, CROWD_RED);
+    fb.rect(rx - 4, ry - 12, 9, 6, WHITE);
+    fb.rect(rx - 11, ry - 31, 23, 11, GRAY);
+    fb.rect(rx - 10, ry - 30, 21, 9, BLACK);
+    fb.text(
+        rx - 6,
+        ry - 29,
+        &format!("{:02}", shot_clock.ceil() as u32),
+        LED,
+        2,
+    );
+}
+
+fn draw_end_rim_and_net(fb: &mut Framebuffer) {
+    const N: usize = 16;
+    let ring = |r: f32, z: f32, i: usize| {
+        let a = i as f32 * (core::f32::consts::TAU / N as f32);
+        project_end(HOOP_X + r * a.cos(), HOOP_Y + r * a.sin(), z)
+    };
+    for i in 0..N {
+        let (x0, y0) = ring(0.75, RIM_Z, i);
+        let (x1, y1) = ring(0.38, RIM_Z - 2.4, i);
+        fb.line(x0, y0, x1, y1, if i % 2 == 0 { WHITE } else { GRAY });
+    }
+    for i in 0..N {
+        let (x0, y0) = ring(0.56, RIM_Z - 1.2, i);
+        let (x1, y1) = ring(0.56, RIM_Z - 1.2, (i + 1) % N);
+        fb.line(x0, y0, x1, y1, GRAY);
+    }
+    for i in 0..N {
+        let (x0, y0) = ring(0.75, RIM_Z, i);
+        let (x1, y1) = ring(0.75, RIM_Z, (i + 1) % N);
+        fb.line(x0, y0, x1, y1, BALL);
+    }
+}
+
 // ---------------------------------------------------------------- people and ball
 
 const COACH_X: f32 = 28.0;
@@ -628,6 +771,14 @@ const STILL: Pose = Pose {
     handling: false,
 };
 
+#[derive(Clone, Copy)]
+struct Pose {
+    frame: i32,
+    moving: bool,
+    jump: bool,
+    handling: bool,
+}
+
 enum Drawable {
     Player(usize),
     Referee,
@@ -635,32 +786,39 @@ enum Drawable {
     Ball,
 }
 
-fn draw_entities(g: &Game, fb: &mut Framebuffer, cam: f32) {
+fn draw_entities(g: &Game, fb: &mut Framebuffer, cam: Cam) {
+    let side = cam.view == View::Side;
     let ref_x = g.ball.x.clamp(8.0, COURT_L - 8.0);
     let ref_y = COURT_W + 2.0;
+    // Painter's order: far to near. Side view: small y is far. End view: large x is far.
+    let key = |x: f32, y: f32| if side { y } else { -x };
     let mut order: Vec<(f32, Drawable)> = Vec::with_capacity(7);
     for (i, p) in g.players.iter().enumerate() {
-        order.push((p.y, Drawable::Player(i)));
+        order.push((key(p.x, p.y), Drawable::Player(i)));
     }
-    order.push((ref_y, Drawable::Referee));
-    order.push((COACH_Y, Drawable::Coach));
+    if side {
+        order.push((key(ref_x, ref_y), Drawable::Referee));
+        order.push((key(COACH_X, COACH_Y), Drawable::Coach));
+    }
     let ball_key = match g.ball.state {
-        BallState::Held(h) => g.players[h].y + 0.01,
-        _ => g.ball.y,
+        BallState::Held(h) => key(g.players[h].x, g.players[h].y) + 0.01,
+        _ => key(g.ball.x, g.ball.y),
     };
     order.push((ball_key, Drawable::Ball));
     order.sort_by(|a, b| a.0.total_cmp(&b.0));
 
     // Shadows first so nobody is painted over by someone else's shadow.
     for p in &g.players {
-        let (sx, sy) = project(cam, p.x, p.y, 0.0);
+        let (sx, sy) = cam.project(p.x, p.y, 0.0);
         fb.rect(sx - 6, sy - 1, 13, 3, SHADOW);
     }
-    let (cxs, cys) = project(cam, COACH_X, COACH_Y, 0.0);
-    fb.rect(cxs - 6, cys - 1, 13, 3, SHADOW);
-    let (rx, ry) = project(cam, ref_x, ref_y, 0.0);
-    fb.rect(rx - 6, ry - 1, 13, 3, SHADOW);
-    let (bx, by) = project(cam, g.ball.x, g.ball.y, 0.0);
+    let (cxs, cys) = cam.project(COACH_X, COACH_Y, 0.0);
+    let (rx, ry) = cam.project(ref_x, ref_y, 0.0);
+    if side {
+        fb.rect(cxs - 6, cys - 1, 13, 3, SHADOW);
+        fb.rect(rx - 6, ry - 1, 13, 3, SHADOW);
+    }
+    let (bx, by) = cam.project(g.ball.x, g.ball.y, 0.0);
     fb.rect(bx - 2, by, 5, 2, SHADOW);
 
     for (_, d) in order {
@@ -673,8 +831,17 @@ fn draw_entities(g: &Game, fb: &mut Framebuffer, cam: f32) {
     }
 }
 
-fn draw_ball(g: &Game, fb: &mut Framebuffer, cam: f32) {
-    let (sx, sy) = project(cam, g.ball.x, g.ball.y, g.ball.z);
+fn draw_ball(g: &Game, fb: &mut Framebuffer, cam: Cam) {
+    let (sx, sy) = match (cam.view, g.ball.state) {
+        // Seen from behind, a dribbled ball would hide behind the body: show it at the hand.
+        (View::End, BallState::Held(h)) => {
+            let p = &g.players[h];
+            let (hx, hy) = cam.project(p.x, p.y, 0.0);
+            let side = if p.facing >= 0 { 7 } else { -7 };
+            (hx + side, hy - (g.ball.z * END_ZPX) as i32)
+        }
+        _ => cam.project(g.ball.x, g.ball.y, g.ball.z),
+    };
     let sy = sy - 2;
     fb.rect(sx - 1, sy - 2, 3, 5, BALL);
     fb.rect(sx - 2, sy - 1, 5, 3, BALL);
@@ -682,23 +849,15 @@ fn draw_ball(g: &Game, fb: &mut Framebuffer, cam: f32) {
     fb.rect(sx, sy - 2, 1, 5, BALL_SEAM);
 }
 
-#[derive(Clone, Copy)]
-struct Pose {
-    frame: i32,
-    moving: bool,
-    jump: bool,
-    handling: bool,
-}
-
-fn draw_player(g: &Game, fb: &mut Framebuffer, cam: f32, i: usize) {
+fn draw_player(g: &Game, fb: &mut Framebuffer, cam: Cam, i: usize) {
     let p = &g.players[i];
     let jump_h = if p.jump > 0.0 {
         let t = 1.0 - p.jump / 0.5;
-        (4.0 * t * (1.0 - t) * 2.4 * Z_PX) as i32
+        (4.0 * t * (1.0 - t) * 2.4 * cam.z_px()) as i32
     } else {
         0
     };
-    let (sx, sy) = project(cam, p.x, p.y, 0.0);
+    let (sx, sy) = cam.project(p.x, p.y, 0.0);
     let pose = Pose {
         frame: ((p.anim * 0.45) as i32) & 3,
         moving: (p.vx * p.vx + p.vy * p.vy) > 4.0,
@@ -706,21 +865,147 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: f32, i: usize) {
         handling: matches!(g.ball.state, BallState::Held(h) if h == i),
     };
     let controlled = i == g.controlled && g.phase == Phase::Playing;
-    draw_person(
-        fb,
-        sx,
-        sy - jump_h,
-        p.facing as i32,
-        &TEAM_LOOKS[i],
-        pose,
-        controlled,
-    );
+    let head = match cam.view {
+        View::Side => {
+            draw_person(
+                fb,
+                sx,
+                sy - jump_h,
+                p.facing as i32,
+                &TEAM_LOOKS[i],
+                pose,
+                controlled,
+            );
+            46
+        }
+        View::End => {
+            // Moving toward the basket shows the player's back.
+            draw_person_end(
+                fb,
+                sx,
+                sy - jump_h,
+                p.facing >= 0,
+                &TEAM_LOOKS[i],
+                pose,
+                controlled,
+            );
+            36
+        }
+    };
     if controlled && (g.ticks / 20) % 2 == 0 {
-        let top = sy - jump_h - 46;
+        let top = sy - jump_h - head;
         fb.rect(sx - 3, top, 7, 1, WHITE);
         fb.rect(sx - 2, top + 1, 5, 1, WHITE);
         fb.rect(sx - 1, top + 2, 3, 1, WHITE);
         fb.px(sx, top + 3, WHITE);
+    }
+}
+
+/// A person seen from behind (`back`) or the front, about 27 px tall, feet at (`sx`, `sy`).
+/// Used by the end-on camera, where players run toward or away from the viewer.
+fn draw_person_end(
+    fb: &mut Framebuffer,
+    sx: i32,
+    sy: i32,
+    back: bool,
+    look: &Look,
+    pose: Pose,
+    black_shoes: bool,
+) {
+    let bob = if pose.moving && pose.frame & 1 == 1 {
+        1
+    } else {
+        0
+    };
+    let mut r = |dx0: i32, dx1: i32, top: i32, bot: i32, c: u8| {
+        let up = if top < -8 { bob } else { 0 };
+        fb.rect(sx + dx0, sy + top - up, dx1 - dx0 + 1, bot - top + 1, c);
+    };
+    let leg = if look.long_pants {
+        look.shorts
+    } else {
+        look.skin
+    };
+    let shoe = if black_shoes { BLACK } else { WHITE };
+    let (left_up, right_up) = if pose.jump {
+        (true, true)
+    } else if pose.moving {
+        match pose.frame {
+            1 => (true, false),
+            3 => (false, true),
+            _ => (false, false),
+        }
+    } else {
+        (false, false)
+    };
+    for (dx, up) in [(-2, left_up), (1, right_up)] {
+        if up {
+            r(dx, dx + 1, -7, -4, leg);
+            r(dx - 1, dx + 1, -3, -2, shoe);
+        } else {
+            r(dx, dx + 1, -7, -2, leg);
+            if !look.long_pants {
+                r(dx, dx + 1, -4, -2, look.sock);
+            }
+            r(dx - 1, dx + 1, -1, 0, shoe);
+        }
+    }
+    // Shorts with a baggy hem, then the jersey.
+    r(-3, 3, -12, -8, look.shorts);
+    r(-4, 4, -10, -8, look.shorts);
+    if look.stripes {
+        for row in -20..=-13 {
+            r(-3, 3, row, row, if row % 2 == 0 { BLACK } else { WHITE });
+        }
+    } else {
+        r(-3, 3, -20, -13, look.top);
+        if look.long_pants {
+            if !back {
+                r(-1, 1, -20, -15, WHITE);
+                r(0, 0, -19, -15, CROWD_RED);
+            }
+        } else {
+            r(-3, -3, -20, -13, look.trim);
+            r(3, 3, -20, -13, look.trim);
+        }
+    }
+    // Neck and head: the back of the head is all hair, the front shows a face.
+    r(-1, 1, -21, -21, look.skin);
+    r(-2, 2, -26, -22, if back { look.hair } else { look.skin });
+    if back {
+        r(-2, 2, -23, -22, look.skin);
+    } else {
+        r(-2, 2, -26, -25, look.hair);
+        r(-1, -1, -24, -24, BLACK);
+        r(1, 1, -24, -24, BLACK);
+    }
+    // Arms.
+    let sleeve = if look.stripes || look.long_pants {
+        look.top
+    } else {
+        look.skin
+    };
+    if pose.jump {
+        r(-4, -3, -31, -20, look.skin);
+        r(3, 4, -31, -20, look.skin);
+    } else {
+        let swing = if pose.moving && pose.frame & 1 == 1 {
+            1
+        } else {
+            0
+        };
+        r(-5, -4, -20, -18, sleeve);
+        r(4, 5, -20, -18, sleeve);
+        r(-5, -4, -17, -14 - swing, look.skin);
+        r(4, 5, -17, -14 + swing, look.skin);
+        if pose.handling {
+            r(6, 7, -16, -14, look.skin);
+        }
+    }
+    if look.number > 0 {
+        let s = format!("{}", look.number);
+        let w = text_width(&s, 1);
+        fb.text(sx - w / 2, sy - 19 - bob, &s, look.trim, 1);
     }
 }
 
@@ -918,5 +1203,31 @@ mod tests {
             draw(&g, &mut fb);
             assert!((CAM_MIN..=CAM_MAX).contains(&fb.cam_x));
         }
+    }
+
+    #[test]
+    fn end_on_view_renders_and_cuts_back() {
+        use crate::game::View;
+        let mut g = Game::new(5);
+        let mut fb = Framebuffer::new();
+        draw(&g, &mut fb);
+        let side_frame = fb.idx.clone();
+        g.players[0].x = crate::game::END_VIEW_ENTER_X + 4.0;
+        g.step(0);
+        assert_eq!(g.view, View::End);
+        for t in 0..120 {
+            g.step(if t < 60 { RIGHT } else { SHOOT });
+            draw(&g, &mut fb);
+            assert!(fb.idx.iter().all(|&c| (c as usize) < PALETTE.len()));
+        }
+        assert_ne!(
+            fb.idx, side_frame,
+            "the end-on view looks different from the side view"
+        );
+        g.players[0].x = 20.0;
+        g.ball.state = crate::game::BallState::Held(0);
+        g.step(0);
+        assert_eq!(g.view, View::Side);
+        draw(&g, &mut fb);
     }
 }

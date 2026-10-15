@@ -6,6 +6,15 @@ screenshots**. The screenshots are copyrighted by EA and kept for reference only
 folder may be copied into the game (the project's rule is *own everything*). Prefer linking to
 further screenshots over adding more, and put your own measurements and observations in notes.
 
+## Other games we reference
+
+- ***TV Sports: Basketball*** (Cinemaware, 1990) — the graphics-fidelity target and the source of
+  the multi-camera idea (side view for backcourt/transition, end-on view for half-court and free
+  throws). Also has create-a-player, a desk presenter and mock commercials (wishlist, far future).
+  Notes: [visual-notes.md](visual-notes.md).
+- A slightly later EA basketball game (title not confirmed) — floor/sprite/HUD look; screenshot in
+  [screenshots/](screenshots/).
+
 ## Screenshots and notes
 
 - [screenshots/](screenshots/) — reference-only screenshots of the DOS and Genesis versions
