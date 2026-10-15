@@ -6,7 +6,10 @@
 
 pub mod log;
 pub mod protocol;
+pub mod session;
 pub mod transport;
 
+pub use log::Level;
 pub use protocol::{DecodeError, Message, PROTOCOL_VERSION};
+pub use session::{EndReason, Role, Session, Status, Update};
 pub use transport::{Channel, LocalLink, LocalTransport, NetConfig, Transport};

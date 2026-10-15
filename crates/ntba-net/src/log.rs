@@ -47,7 +47,7 @@ pub fn log(level: Level, target: &str, message: &str) {
 
 #[macro_export]
 macro_rules! net_log {
-    ($level:ident, $target:expr, $($arg:tt)*) => {
-        $crate::log::log($crate::log::Level::$level, $target, &format!($($arg)*))
+    ($level:expr, $target:expr, $($arg:tt)*) => {
+        $crate::log::log($level, $target, &format!($($arg)*))
     };
 }
