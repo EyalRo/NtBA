@@ -21,9 +21,23 @@
     <section class="play">
     <canvas id="screen" width="320" height="200" tabindex="0" aria-label="NtBA game screen"></canvas>
     <p id="status" role="status">Loading…</p>
+    <section class="online" id="online" hidden aria-label="Online play">
+      <div class="online-row" id="online-menu">
+        <button type="button" id="host-btn">Host an online game</button>
+        <form id="join-form" autocomplete="off">
+          <label>Join with code
+            <input id="join-code" maxlength="7" size="8" autocapitalize="characters" spellcheck="false" inputmode="text" placeholder="K7M2QX" required>
+          </label>
+          <button type="submit">Join</button>
+        </form>
+      </div>
+      <button type="button" id="leave-btn" hidden>Leave online match</button>
+      <p id="online-status" role="status"></p>
+    </section>
     <p class="help">
       Home (gold): <kbd>WASD</kbd> move &nbsp;·&nbsp; <kbd>Z</kbd> pass &nbsp;·&nbsp; <kbd>X</kbd> shoot &nbsp;·&nbsp; <kbd>C</kbd> switch<br>
       Away (green): <kbd>←↑↓→</kbd> move &nbsp;·&nbsp; <kbd>J</kbd> pass &nbsp;·&nbsp; <kbd>K</kbd> shoot &nbsp;·&nbsp; <kbd>L</kbd> switch<br>
+      Online: you control one team (host = Home, guest = Away); <kbd>WASD</kbd> or <kbd>←↑↓→</kbd>, <kbd>Z</kbd>/<kbd>J</kbd> pass, <kbd>X</kbd>/<kbd>K</kbd> shoot, <kbd>C</kbd>/<kbd>L</kbd> switch<br>
       On defence, run into the ball handler to steal, or press shoot to swipe or block &nbsp;·&nbsp; <kbd>Enter</kbd> restart after the final buzzer
     </p>
     <aside class="join">

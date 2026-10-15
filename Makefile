@@ -23,6 +23,7 @@ check:
 # Cross-build determinism: native tests pin the hash, this checks the wasm build agrees.
 determinism: web
 	node scripts/check-determinism.mjs
+	node scripts/test-net-wasm.mjs
 
 fmt:
 	cargo fmt --all

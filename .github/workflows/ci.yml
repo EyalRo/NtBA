@@ -20,6 +20,8 @@ jobs:
         run: scripts/build-web.sh
       - name: Check wasm simulates bit-identically to native
         run: node scripts/check-determinism.mjs
+      - name: Check the wasm online-play glue with two instances
+        run: node scripts/test-net-wasm.mjs
       - uses: actions/upload-artifact@v7
         with:
           name: web

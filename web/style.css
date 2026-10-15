@@ -58,6 +58,22 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 3p
 .join a { color: var(--gold); font-weight: bold; white-space: nowrap; }
 .join a:hover, .join a:focus-visible { color: #fff; }
 
+/* Online play panel */
+.online { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.online[hidden], .online [hidden] { display: none; }
+.online-row { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; }
+.online form { display: flex; gap: 8px; align-items: center; }
+.online input {
+  font: inherit; width: 8ch; text-transform: uppercase; letter-spacing: .15em; text-align: center;
+  background: var(--panel); color: #fff; border: 1px solid var(--line); border-radius: 3px; padding: 4px 6px;
+}
+.online button {
+  font: inherit; color: #fff; background: var(--panel); border: 1px solid var(--line); border-radius: 3px;
+  padding: 4px 12px; cursor: pointer;
+}
+.online button:hover, .online button:focus-visible, .online input:focus-visible { border-color: var(--gold); outline: none; }
+#online-status { margin: 0; min-height: 1.4em; color: var(--gold); text-align: center; max-width: 60em; }
+
 /* Narrow screens: box art becomes a compact banner above the game. */
 @media (max-width: 760px) {
   main { grid-template-columns: 1fr; }
