@@ -14,7 +14,7 @@ further screenshots over adding more, and put your own measurements and observat
   the multi-camera idea (side view for backcourt/transition, end-on view for half-court and free
   throws). Also has create-a-player, a desk presenter and mock commercials (wishlist, far future).
   Notes: [Visual Notes](Visual-Notes).
-- A slightly later EA basketball game (title not confirmed) — floor/sprite/HUD look; screenshot in
+- *Bulls versus Blazers and the NBA Playoffs* (Electronic Arts, 1992) — the later EA game, as identified by the project owner (not independently verified): floor/sprite/HUD look; screenshot in
   [Reference Screenshots](Reference-Screenshots).
 
 ## Screenshots and notes

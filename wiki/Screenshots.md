@@ -32,4 +32,4 @@ for the licence note and what each one shows). NtBA's own art is original.
 | ![DOS version](https://raw.githubusercontent.com/wiki/EyalRo/NtBA/images/dos-ega-free-throw-lineup.webp) | ![Genesis tip-off](https://raw.githubusercontent.com/wiki/EyalRo/NtBA/images/genesis-tipoff.webp) |
 | MS-DOS (EGA): scrolling half-court, free-throw line-up | Sega Genesis: tip-off, benches, scorer's table |
 | ![Genesis gameplay](https://raw.githubusercontent.com/wiki/EyalRo/NtBA/images/genesis-gameplay-half-court.webp) | ![Later EA game](https://raw.githubusercontent.com/wiki/EyalRo/NtBA/images/later-ea-game-target-look.png) |
-| Sega Genesis: play at the basket, shot clock on the stanchion | A slightly later EA game: the look NtBA is aiming for |
+| Sega Genesis: play at the basket, shot clock on the stanchion | *Bulls versus Blazers and the NBA Playoffs* (EA): the look NtBA is aiming for |

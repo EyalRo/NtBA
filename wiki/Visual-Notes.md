@@ -75,7 +75,7 @@ sprites, a face-on backboard with the shot clock above it, staff behind the base
 that converges toward the baseline. Not done yet: the stats panel and minimap, a dedicated
 free-throw view, and — far future — the presenter and commercials ([Roadmap](Roadmap)).
 
-## Target look: a slightly later EA game
+## Target look: *Bulls versus Blazers and the NBA Playoffs* (EA)
 
 ![Later EA game, target look](https://raw.githubusercontent.com/wiki/EyalRo/NtBA/images/later-ea-game-target-look.png)
 
@@ -121,7 +121,7 @@ The proof of concept was reworked to chase this look (see the screenshots in the
 | Lane colour | Yellow / blue | Blue lane and centre circle | Centre-circle logo |
 | Hoop | Backboard, arm, stanchion, net, shot clock | All of these; shot clock on the stanchion | Backboard shatter/vibration, net swish |
 | Players | Numbered jerseys, varied looks, shaded and outlined | 34 px shaded outlined sprites, skeleton run cycle, IK dribble arm, numbers, 3 skin tones and hair colours, black shoes = controlled | Hand-authored sheets, more poses (dunk, defend) |
-| Scoreboard | Amber dot-matrix, framed (compact in the later game) | Compact framed panel, dot-matrix digits | Team names, period |
+| Scoreboard | Amber dot-matrix, framed (compact in Bulls vs. Blazers) | Compact framed panel, dot-matrix digits | Team names, period |
 | Bench & table | Bench with coaches, scorer's table, ad boards | Both benches, standing coach, scorer's table, officials, ad boards | Cheerleaders, photographers, animation |
 | Crowd | Tiers, waving arms | Five parallax rows of shaded fans with aisles, waving arms and camera flashes | Signs and banners, reactions to scores |
 | Shot mechanic | Hold and release at the apex, tap = fake | Instant shot | See [Genesis Manual Notes](Genesis-Manual-Notes) |
