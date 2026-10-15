@@ -126,6 +126,26 @@ impl Framebuffer {
         }
     }
 
+    /// Fill the triangle with corners `v` (pixel centres inside it).
+    fn triangle(&mut self, v: [(f32, f32); 3], c: u8) {
+        let x0 = v.iter().map(|p| p.0).fold(f32::MAX, f32::min).floor() as i32;
+        let x1 = v.iter().map(|p| p.0).fold(f32::MIN, f32::max).ceil() as i32;
+        let y0 = v.iter().map(|p| p.1).fold(f32::MAX, f32::min).floor() as i32;
+        let y1 = v.iter().map(|p| p.1).fold(f32::MIN, f32::max).ceil() as i32;
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
+                let edge = |a: (f32, f32), b: (f32, f32)| {
+                    (b.0 - a.0) * (py - a.1) - (b.1 - a.1) * (px - a.0)
+                };
+                let e = [edge(v[0], v[1]), edge(v[1], v[2]), edge(v[2], v[0])];
+                if e.iter().all(|&k| k >= 0.0) || e.iter().all(|&k| k <= 0.0) {
+                    self.px(x, y, c);
+                }
+            }
+        }
+    }
+
     pub fn text(&mut self, x: i32, y: i32, s: &str, c: u8, scale: i32) {
         let mut cx = x;
         for ch in s.chars() {
@@ -263,6 +283,14 @@ impl Cam {
             View::End(_) => END_ZPX,
         }
     }
+
+    /// Height in pixels of a standing player sprite, feet to top of head.
+    fn body_h(self) -> i32 {
+        match self.view {
+            View::Side => 47,
+            View::End(_) => 38,
+        }
+    }
 }
 
 // ---------------------------------------------------------------- frame
@@ -281,6 +309,7 @@ pub fn draw(g: &Game, fb: &mut Framebuffer) {
         View::Side => draw_side_scene(g, fb, cam),
         View::End(_) => draw_end_scene(g, fb, cam),
     }
+    draw_offscreen_markers(g, fb, cam);
     draw_bottom_strip(fb);
     draw_scoreboard(g, fb);
     draw_overlays(g, fb);
@@ -943,14 +972,13 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: Cam, i: usize) {
     let team = team_of(i);
     let look = &TEAM_LOOKS[team][i % TEAM_SIZE];
     let controlled = i == g.controlled[team] && g.phase == Phase::Playing;
-    let head = match cam.view {
+    match cam.view {
         View::Side => {
             fb.sprite(
                 &side_person(look, p.facing as i32, &pose, controlled),
                 sx,
                 sy,
             );
-            47
         }
         View::End(b) => {
             // Moving toward the basket shows the player's back.
@@ -959,11 +987,10 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: Cam, i: usize) {
                 sx,
                 sy,
             );
-            38
         }
-    };
+    }
     if controlled && (g.ticks / 20) % 2 == 0 {
-        let top = sy - head;
+        let top = sy - cam.body_h();
         for (k, w) in [7, 5, 3, 1].iter().enumerate() {
             fb.rect(sx - w / 2, top + k as i32, *w, 1, TEAM_ACCENT[team]);
         }
@@ -972,6 +999,47 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: Cam, i: usize) {
 }
 
 // ---------------------------------------------------------------- HUD
+
+/// Edge arrow in the shirt colour pointing at each off-screen controlled player.
+fn draw_offscreen_markers(g: &Game, fb: &mut Framebuffer, cam: Cam) {
+    if g.phase != Phase::Playing {
+        return;
+    }
+    const MARGIN: f32 = 7.0;
+    for (team, &i) in g.controlled.iter().enumerate() {
+        let p = &g.players[i];
+        let (sx, sy) = cam.project(p.x, p.y, 0.0);
+        let top = sy - cam.body_h();
+        if (0..SCREEN_W as i32).contains(&sx) && sy >= 0 && top < BOTTOM_STRIP {
+            continue;
+        }
+        let (bx, by) = (sx as f32, (sy + top) as f32 * 0.5);
+        let cx = bx.clamp(MARGIN, SCREEN_W as f32 - MARGIN);
+        let cy = by.clamp(MARGIN, BOTTOM_STRIP as f32 - MARGIN);
+        let (dx, dy) = (bx - cx, by - cy);
+        let len = (dx * dx + dy * dy).sqrt().max(0.001);
+        let (ux, uy) = (dx / len, dy / len);
+        let tip = (cx + ux * 5.0, cy + uy * 5.0);
+        let (mx, my) = (cx - ux * 4.0, cy - uy * 4.0);
+        let corners = [
+            tip,
+            (mx - uy * 5.0, my + ux * 5.0),
+            (mx + uy * 5.0, my - ux * 5.0),
+        ];
+        let shirt = TEAM_LOOKS[team][0].top;
+        fb.triangle(corners, shirt[2]);
+        for k in 0..3 {
+            let (a, b) = (corners[k], corners[(k + 1) % 3]);
+            fb.line(
+                a.0.round() as i32,
+                a.1.round() as i32,
+                b.0.round() as i32,
+                b.1.round() as i32,
+                shirt[0],
+            );
+        }
+    }
+}
 
 fn draw_bottom_strip(fb: &mut Framebuffer) {
     fb.rect(0, BOTTOM_STRIP, SCREEN_W as i32, 16, APRON[0]);
@@ -1100,6 +1168,25 @@ mod tests {
         g.step([0, 0]);
         assert_eq!(g.view, View::Side);
         draw(&g, &mut fb);
+    }
+
+    #[test]
+    fn off_screen_controlled_player_gets_an_edge_arrow() {
+        let mut g = Game::new(2);
+        let mut fb = Framebuffer::new();
+        draw(&g, &mut fb);
+        let on_screen = fb.idx.clone();
+        let away = g.controlled[1];
+        g.players[away].x = 90.0;
+        g.players[away].y = 25.0;
+        draw(&g, &mut fb);
+        let edge_changed = (60..BOTTOM_STRIP).any(|y| {
+            (SCREEN_W - 12..SCREEN_W).any(|x| {
+                let i = y as usize * SCREEN_W + x;
+                fb.idx[i] == GREEN[2] && on_screen[i] != GREEN[2]
+            })
+        });
+        assert!(edge_changed, "a green arrow on the right edge");
     }
 
     #[test]

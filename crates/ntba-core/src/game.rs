@@ -32,6 +32,11 @@ const BLOCK_CHANCE: f32 = 0.5;
 const BLOCK_WINDOW: f32 = 0.3;
 const INTERCEPT_REACH: f32 = 1.2;
 const INTERCEPT_DELAY: f32 = 0.1;
+const CONTACT_REACH: f32 = 2.4;
+/// Speed (ft/s) a defender must be running at the handler to strip the ball on contact.
+const CONTACT_SPEED: f32 = 6.0;
+/// No contact steals this long after the ball changes team.
+const STEAL_LOCK_SECS: f32 = 0.75;
 
 /// Where the five players line up at the start of a possession, ball with player 0.
 const START_SPOTS: [(f32, f32); 5] = [
@@ -179,6 +184,7 @@ pub struct Game {
     rng: u32,
     prev_input: [u8; 2],
     pending_points: u32,
+    steal_lock: f32,
 }
 
 impl Game {
@@ -207,6 +213,7 @@ impl Game {
             rng: seed.wrapping_mul(0x9E37_79B1) | 1,
             prev_input: [0; 2],
             pending_points: 2,
+            steal_lock: 0.0,
         };
         for _ in 0..8 {
             g.rand();
@@ -251,6 +258,7 @@ impl Game {
         self.view = View::Side;
         self.legacy_view = [None; 2];
         self.shot_clock = SHOT_CLOCK_SECS;
+        self.steal_lock = STEAL_LOCK_SECS;
         self.ball.vx = 0.0;
         self.ball.vy = 0.0;
         self.ball.vz = 0.0;
@@ -296,6 +304,7 @@ impl Game {
             self.handle_actions(team, pressed[team], moves[team]);
         }
         self.move_players(moves);
+        self.contact_steal();
         self.update_ball();
         self.update_view(pads);
     }
@@ -332,6 +341,7 @@ impl Game {
     }
 
     fn update_clocks(&mut self) {
+        self.steal_lock = (self.steal_lock - DT).max(0.0);
         self.clock -= DT;
         if self.clock <= 0.0 {
             self.clock = 0.0;
@@ -396,6 +406,7 @@ impl Game {
         if team != self.offense {
             self.offense = team;
             self.shot_clock = SHOT_CLOCK_SECS;
+            self.steal_lock = STEAL_LOCK_SECS;
         }
         self.ball.state = BallState::Held(i);
         self.controlled[team] = i;
@@ -485,6 +496,24 @@ impl Game {
                 self.say("BLOCKED!");
             }
             _ => {}
+        }
+    }
+
+    /// A human defender running into the ball handler takes the ball.
+    fn contact_steal(&mut self) {
+        let BallState::Held(h) = self.ball.state else {
+            return;
+        };
+        if self.steal_lock > 0.0 {
+            return;
+        }
+        let d = self.controlled[1 - team_of(h)];
+        let (p, q) = (self.players[d], self.players[h]);
+        let (dx, dy) = (q.x - p.x, q.y - p.y);
+        let gap = (dx * dx + dy * dy).sqrt().max(0.001);
+        if gap < CONTACT_REACH && (p.vx * dx + p.vy * dy) / gap > CONTACT_SPEED {
+            self.gain(d);
+            self.say("STEAL!");
         }
     }
 
@@ -912,6 +941,22 @@ mod tests {
             }
         }
         panic!("no steal in 40 seeds");
+    }
+
+    #[test]
+    fn running_into_the_handler_steals_the_ball() {
+        let mut g = Game::new(1);
+        let d = g.controlled[1];
+        run2(&mut g, [0, LEFT], 90);
+        assert_eq!(g.ball.state, BallState::Held(d));
+        assert_eq!(g.offense, 1);
+    }
+
+    #[test]
+    fn handler_running_into_a_still_defender_keeps_the_ball() {
+        let mut g = Game::new(1);
+        run(&mut g, RIGHT, 120);
+        assert_eq!(g.ball.state, BallState::Held(0));
     }
 
     #[test]

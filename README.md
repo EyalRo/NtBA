@@ -53,6 +53,7 @@ Open http://localhost:8080 and click the page if keys don't respond.
 | --- | --- | --- |
 | WASD | Arrows | Move your highlighted player (on the end-on half-court view, Up runs toward the basket) |
 | `X` | `K` | Shoot (3 pts from beyond the arc; farther shots miss more often). On defence: swipe for a steal, or jump to block a shot just released |
+| | | On defence, run into the ball handler to steal the ball. If your player is off screen, an arrow in your shirt colour on the screen edge points to them |
 | `Z` | `J` | Pass to the teammate in the direction you hold (nearest if none) |
 | `C` | `L` | Switch to the teammate nearest the ball (whenever your team doesn't have it) |
 | Enter | | Restart after the final buzzer |

@@ -91,9 +91,12 @@ arrows + `J`/`K`/`L`). `Game::step` takes one input mask per team; each human st
 `controlled[team]`, the other four are AI: on offence they run to half-court spots (mirrored for
 away), on defence each guards its counterpart (same slot on the other team) from the basket side.
 Shoot scores 2 or 3 by distance (chance falls with distance); pass goes to the teammate best
-aligned with the held direction (or the nearest). On defence, shoot is a jump that may steal a held
-ball within reach or block a shot just released; a defender standing in a passing lane intercepts
+aligned with the held direction (or the nearest). On defence, running into the ball handler steals it (not within
+0.75 s of a change of possession); shoot is a jump that may steal a held ball within reach or block
+a shot just released; a defender standing in a passing lane intercepts
 it. Switch moves control to the teammate nearest the ball whenever your team doesn't have it.
+When a controlled player is off screen, a triangle in their shirt colour on the nearest edge
+points at them.
 Misses bounce off the rim and anyone can rebound. A basket or a shot-clock violation gives the ball
 to the other team. Shot clock 24 s, one 5-minute period, Enter restarts after the buzzer.
 
