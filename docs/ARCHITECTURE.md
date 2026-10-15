@@ -18,7 +18,8 @@ canvas  ◀─ RGBA bytes ◀── ntba_framebuffer() ◀ ntba_render() ◀ ren
 
 - The host owns time. It accumulates real elapsed time and calls `ntba_step` once per 1/60 s,
   then renders once per animation frame. The core never reads a clock.
-- Input is a `u8` bitmask (`ntba_core::input`). That keeps replays, tests and a future
+- Input is a `u8` bitmask per pad (`ntba_core::input`); `ntba_step` packs home in the low byte
+  and away in the next. That keeps replays, tests and a future
   lock-step P2P protocol (exchange one byte per tick) trivial.
 - The core renders into a 320x200 paletted framebuffer (see *Period constraints* below) and
   expands it to RGBA. The page scales the canvas with CSS `image-rendering: pixelated`.
@@ -52,10 +53,10 @@ modules; the simulation and scene code only ask for "a person with this pose".
 
 ## Camera views
 
-The simulation owns a `View` (`Side` or `End`) because the view changes what the direction keys
-mean. The ball position drives it with hysteresis (`END_VIEW_ENTER_X`, `END_VIEW_EXIT_X` in
-`game.rs`): in the frontcourt the game cuts to the **end-on** camera (looking at the basket from
-midcourt, `render::project_end`), and back to the **side** camera in transition. In the end-on view
+The simulation owns a `View` (`Side`, or `End` of either basket) because the view changes what the
+direction keys mean. The ball position drives it with hysteresis (`END_VIEW_ENTER_X`,
+`END_VIEW_EXIT_X` in `game.rs`, mirrored for the left basket): near either basket the game cuts to
+the **end-on** camera (looking at that basket from midcourt, `render::project_end`), and back to the **side** camera in transition. In the end-on view
 the direction keys are screen-relative: Up runs toward the basket, Left/Right strafe. A direction
 held across a cut keeps its old meaning until released, so the cut never reverses a run mid-stride.
 The renderer picks sprites (`people::side_person` / `people::end_person`) and projections from
@@ -84,16 +85,22 @@ The renderer picks sprites (`people::side_person` / `people::end_person`) and pr
 
 ## Current gameplay (proof of concept)
 
-One team of five attacks the right-hand basket with no defence. Arrow keys / WASD move the
-controlled player; `X` shoots (2 or 3 points by distance; chance falls with distance); `Z` passes
-to the teammate best aligned with the held direction (or the nearest if none is held); `C` /
-Space switches player when the ball is loose. Misses bounce off the rim and a teammate recovers
-them. Shot clock 24 s, one 5-minute period, Enter restarts after the buzzer.
+Two humans share the keyboard, five-on-five. `Game::players` holds ten players: 0..5 are home
+(gold, attack the right-hand basket, WASD + `Z`/`X`/`C`), 5..10 are away (green, attack the left,
+arrows + `J`/`K`/`L`). `Game::step` takes one input mask per team; each human steers
+`controlled[team]`, the other four are AI: on offence they run to half-court spots (mirrored for
+away), on defence each guards its counterpart (same slot on the other team) from the basket side.
+Shoot scores 2 or 3 by distance (chance falls with distance); pass goes to the teammate best
+aligned with the held direction (or the nearest). On defence, shoot is a jump that may steal a held
+ball within reach or block a shot just released; a defender standing in a passing lane intercepts
+it. Switch moves control to the teammate nearest the ball whenever your team doesn't have it.
+Misses bounce off the rim and anyone can rebound. A basket or a shot-clock violation gives the ball
+to the other team. Shot clock 24 s, one 5-minute period, Enter restarts after the buzzer.
 
 ## Where the next milestones plug in
 
-- **Opposition / bot AI:** a second `[Player; 5]` in `Game` and a `controller` per player
-  (human, bot, remote) producing the same `u8` input mask — that is also the seam for P2P.
+- **Bot opponent / P2P:** a `controller` per team (human, bot, remote) producing the same `u8`
+  input mask that `Game::step` already takes per team — that is also the seam for P2P.
 - **Sprites:** player/ball/referee drawing in `render.rs` is procedural today; swap for
   hand-authored sprite sheets (indexed pixels in the same 32-colour palette) without touching
   the simulation.

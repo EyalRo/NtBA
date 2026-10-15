@@ -5,15 +5,16 @@ const BUTTONS = {
   PASS: 1 << 4, SHOOT: 1 << 5, SWITCH: 1 << 6, START: 1 << 7,
 };
 
+// Home pad in the low byte of the word passed to ntba_step, away pad in the next byte.
+const P1 = 0;
+const P2 = 8;
+
 const KEYMAP = {
-  ArrowUp: BUTTONS.UP, KeyW: BUTTONS.UP,
-  ArrowDown: BUTTONS.DOWN, KeyS: BUTTONS.DOWN,
-  ArrowLeft: BUTTONS.LEFT, KeyA: BUTTONS.LEFT,
-  ArrowRight: BUTTONS.RIGHT, KeyD: BUTTONS.RIGHT,
-  KeyZ: BUTTONS.PASS, KeyJ: BUTTONS.PASS,
-  KeyX: BUTTONS.SHOOT, KeyK: BUTTONS.SHOOT,
-  KeyC: BUTTONS.SWITCH, Space: BUTTONS.SWITCH,
-  Enter: BUTTONS.START,
+  KeyW: BUTTONS.UP << P1, KeyS: BUTTONS.DOWN << P1, KeyA: BUTTONS.LEFT << P1, KeyD: BUTTONS.RIGHT << P1,
+  KeyZ: BUTTONS.PASS << P1, KeyX: BUTTONS.SHOOT << P1, KeyC: BUTTONS.SWITCH << P1,
+  ArrowUp: BUTTONS.UP << P2, ArrowDown: BUTTONS.DOWN << P2, ArrowLeft: BUTTONS.LEFT << P2, ArrowRight: BUTTONS.RIGHT << P2,
+  KeyJ: BUTTONS.PASS << P2, KeyK: BUTTONS.SHOOT << P2, KeyL: BUTTONS.SWITCH << P2,
+  Enter: BUTTONS.START << P1,
 };
 
 const status = document.getElementById('status');

@@ -27,7 +27,8 @@ pixel-art sprite sheets in the same palette ([roadmap](docs/ROADMAP.md)).
 (we use under 100, in hand-built shading ramps), dithered lighting, and no blending — see
 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
-**Status: proof of concept.** One team, no defence: run, pass, shoot, score against a shot clock
+**Status: proof of concept.** Two players on one keyboard, five-on-five: each human steers one
+player, the other four on each side are AI. Run, pass, shoot, steal and block against a shot clock
 and a 5-minute game clock. See [docs/VISION.md](docs/VISION.md) for where this is headed and
 [docs/ROADMAP.md](docs/ROADMAP.md) for milestones and the wishlist (opposing bot team, online
 peer-to-peer play, a native build, create-a-player, and — far in the future — TV presentation).
@@ -48,13 +49,13 @@ make serve         # builds the wasm and serves http://localhost:8080
 
 Open http://localhost:8080 and click the page if keys don't respond.
 
-| Key | Action |
-| --- | --- |
-| Arrows / WASD | Move the highlighted player (on the end-on half-court view, Up runs toward the basket) |
-| `X` / `K` | Shoot (3 pts from beyond the arc; farther shots miss more often) |
-| `Z` / `J` | Pass to the teammate in the direction you hold (nearest if none) |
-| `C` / Space | Switch player while the ball is loose |
-| Enter | Restart after the final buzzer |
+| Home (gold) | Away (green) | Action |
+| --- | --- | --- |
+| WASD | Arrows | Move your highlighted player (on the end-on half-court view, Up runs toward the basket) |
+| `X` | `K` | Shoot (3 pts from beyond the arc; farther shots miss more often). On defence: swipe for a steal, or jump to block a shot just released |
+| `Z` | `J` | Pass to the teammate in the direction you hold (nearest if none) |
+| `C` | `L` | Switch to the teammate nearest the ball (whenever your team doesn't have it) |
+| Enter | | Restart after the final buzzer |
 
 Without Nix: `rustup show && make serve` (needs Python 3 and `make`).
 

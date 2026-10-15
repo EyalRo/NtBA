@@ -35,10 +35,10 @@ pub extern "C" fn ntba_init(seed: u32) {
     });
 }
 
-/// Advance exactly one fixed tick (`ntba_tick_hz()` per second). `buttons` is the input bitmask.
+/// Advance one fixed tick; the low byte of `buttons` is the home pad, the next byte the away pad.
 #[no_mangle]
 pub extern "C" fn ntba_step(buttons: u32) {
-    with_state(|s| s.game.step(buttons as u8));
+    with_state(|s| s.game.step([buttons as u8, (buttons >> 8) as u8]));
 }
 
 /// Draw the current game state into the framebuffer.
@@ -69,7 +69,8 @@ pub extern "C" fn ntba_tick_hz() -> u32 {
     TICK_HZ
 }
 
+/// Points scored by `team` (0 = home, 1 = away).
 #[no_mangle]
-pub extern "C" fn ntba_score() -> u32 {
-    with_state(|s| s.game.score).unwrap_or(0)
+pub extern "C" fn ntba_score(team: u32) -> u32 {
+    with_state(|s| s.game.score.get(team as usize).copied().unwrap_or(0)).unwrap_or(0)
 }
