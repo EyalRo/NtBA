@@ -7,6 +7,13 @@ name = "ntba-core"
 version = "0.1.0"
 
 [[package]]
+name = "ntba-net"
+version = "0.1.0"
+dependencies = [
+ "ntba-core",
+]
+
+[[package]]
 name = "ntba-wasm"
 version = "0.1.0"
 dependencies = [

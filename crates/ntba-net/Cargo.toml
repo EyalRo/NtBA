@@ -1,0 +1,11 @@
+[package]
+name = "ntba-net"
+description = "NtBA online play: wire protocol, transport abstraction and lock-step session (no browser or OS dependencies)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+ntba-core = { path = "../ntba-core" }
