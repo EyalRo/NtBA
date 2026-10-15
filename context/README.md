@@ -1,10 +1,26 @@
 # Context: *Lakers versus Celtics and the NBA Playoffs* (1989)
 
 Reference material for contributors who want to match the look, feel and pacing of the game NtBA
-is inspired by. This folder holds **links and our own notes**; please don't commit screenshots or
-assets copied from the original game, which is copyrighted (the project's rule is *own
-everything*). Link to screenshots hosted elsewhere, and put your own measurements and
-observations in notes instead.
+is inspired by. This folder holds **links, our own notes and a small set of reference
+screenshots**. The screenshots are copyrighted by EA and kept for reference only; nothing in this
+folder may be copied into the game (the project's rule is *own everything*). Prefer linking to
+further screenshots over adding more, and put your own measurements and observations in notes.
+
+## Other games we reference
+
+- ***TV Sports: Basketball*** (Cinemaware, 1990) — the graphics-fidelity target and the source of
+  the multi-camera idea (side view for backcourt/transition, end-on view for half-court and free
+  throws). Also has create-a-player, a desk presenter and mock commercials (wishlist, far future).
+  Notes: [visual-notes.md](visual-notes.md).
+- A slightly later EA basketball game (title not confirmed) — floor/sprite/HUD look; screenshot in
+  [screenshots/](screenshots/).
+
+## Screenshots and notes
+
+- [screenshots/](screenshots/) — reference-only screenshots of the DOS and Genesis versions
+  (copyrighted by EA, not GPL, not for use as assets — see the README in that folder).
+- [visual-notes.md](visual-notes.md) — what the original looks like and how NtBA compares.
+- [genesis-manual-notes.md](genesis-manual-notes.md) — controls, rules and options from the manual.
 
 ## Sources
 
@@ -14,6 +30,11 @@ observations in notes instead.
   <https://www.mobygames.com/game/614> (DOS: <https://mobygames.com/game/dos/lakers-versus-celtics-and-the-nba-playoffs>)
 - Compute! magazine review (issue 117) — rules, controls, sound criticism:
   <https://atarimagazines.com/compute/issue117/pp104_reviews_LAKERS_VERSUS_CELTICS_AND_THE_NBA_PLAYOFFS.php>
+- Genesis US manual (controls, rules, options): <https://segaretro.org/images/1/1d/Lakers_Vs_Celtics_MD_US_Manual.pdf>
+  — our summary is in [genesis-manual-notes.md](genesis-manual-notes.md)
+- Lilura1 — blog post on the 1989 IBM PC / MS-DOS version (screenshot collage: title, stats
+  screens, gameplay): <https://lilura1.blogspot.com/2022/04/Lakers-versus-Celtics-NBA-Playoffs-IBM-PC-MS-DOS-1989-Electronic-Arts.html>
+  (not yet summarised here — the page could not be fetched from the build environment)
 - Giant Bomb — game page: <https://giantbomb.com/wiki/Games/Lakers_vs_Celtics_and_the_NBA_Playoffs>
 - Sega Retro (Genesis version): <https://segaretro.org/700401>
 - SEGADoes — Genesis write-up: <https://segadoes.com/2017/12/06/lakers-versus-celtics-and-the-nba-playoffs/>

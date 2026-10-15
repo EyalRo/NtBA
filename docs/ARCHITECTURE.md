@@ -20,10 +20,33 @@ canvas  ◀─ RGBA bytes ◀── ntba_framebuffer() ◀ ntba_render() ◀ ren
   then renders once per animation frame. The core never reads a clock.
 - Input is a `u8` bitmask (`ntba_core::input`). That keeps replays, tests and a future
   lock-step P2P protocol (exchange one byte per tick) trivial.
-- The core renders into a 320x200 paletted framebuffer (16 colours, `render::PALETTE`) and expands
-  it to RGBA. The page scales the canvas with CSS `image-rendering: pixelated`.
+- The core renders into a 320x200 paletted framebuffer (32 colours, `render::PALETTE`; the Genesis
+  could show 64, DOS 16) and expands it to RGBA. The page scales the canvas with CSS `image-rendering: pixelated`.
 - The wasm module uses a C ABI, not `wasm-bindgen`, so the only build requirement is the
   `wasm32-unknown-unknown` target. Keep the exported surface tiny (`ntba-wasm/src/lib.rs`).
+
+## Camera views
+
+The simulation owns a `View` (`Side` or `End`) because the view changes what the direction keys
+mean. The ball position drives it with hysteresis (`END_VIEW_ENTER_X`, `END_VIEW_EXIT_X` in
+`game.rs`): in the frontcourt the game cuts to the **end-on** camera (looking at the basket from
+midcourt, `render::project_end`), and back to the **side** camera in transition. In the end-on view
+the direction keys are screen-relative: Up runs toward the basket, Left/Right strafe. A direction
+held across a cut keeps its old meaning until released, so the cut never reverses a run mid-stride.
+The renderer picks sprites (`draw_person` / `draw_person_end`) and projections from `Game::view`.
+
+## Rendering notes
+
+- The camera scrolls horizontally to follow the ball (`Framebuffer::update_camera`, visual only,
+  eased per rendered frame, clamped so one end of the court is always in view). The crowd scrolls
+  slower than the floor for parallax.
+- `render::project(cam_x, x, y, z)` maps feet to pixels. Scale grows linearly from `FAR_SCALE` to
+  `NEAR_SCALE` px/ft between the far and near sidelines, which gives the gently slanted baselines of
+  the originals; the floor is drawn by inverting that mapping per pixel (`draw_court`).
+- Hardwood planks, lines and lane colours are computed from world coordinates, so they stay put
+  while the camera moves. Sprites (`draw_person`, `draw_seated`) are drawn procedurally with
+  rectangles; replace them with hand-authored sheets when art is ready.
+- The player you control wears black shoes, as in the Genesis manual.
 
 ## Simulation rules of thumb
 
@@ -47,6 +70,6 @@ them. Shot clock 24 s, one 5-minute period, Enter restarts after the buzzer.
 - **Opposition / bot AI:** a second `[Player; 5]` in `Game` and a `controller` per player
   (human, bot, remote) producing the same `u8` input mask — that is also the seam for P2P.
 - **Sprites:** player/ball/referee drawing in `render.rs` is procedural today; swap for
-  hand-authored sprite sheets (indexed pixels in the same 16-colour palette) without touching
+  hand-authored sprite sheets (indexed pixels in the same 32-colour palette) without touching
   the simulation.
 - **Audio:** the host will play sounds from event flags the core exposes (not implemented yet).

@@ -15,6 +15,11 @@ pub const THREE_POINT_DIST: f32 = 23.75;
 pub const GRAVITY: f32 = 64.0;
 pub const SHOT_CLOCK_SECS: f32 = 24.0;
 pub const PERIOD_SECS: f32 = 300.0;
+/// The camera cuts to the end-on view once the ball is this close to the attacked basket...
+pub const END_VIEW_ENTER_X: f32 = 66.0;
+/// ...and back to the side view when it drops below this (hysteresis avoids flicker).
+pub const END_VIEW_EXIT_X: f32 = 58.0;
+const DIR_MASK: u8 = input::UP | input::DOWN | input::LEFT | input::RIGHT;
 const SCORED_PAUSE: f32 = 1.8;
 const MESSAGE_SECS: f32 = 1.6;
 
@@ -69,6 +74,39 @@ pub struct Ball {
     pub state: BallState,
 }
 
+/// Which camera is showing the play. The simulation owns this because it changes what the
+/// direction keys mean (on the end-on view "up" runs toward the basket).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum View {
+    /// Sideline view that scrolls along the court (transition and backcourt play).
+    Side,
+    /// Looking at the basket from midcourt (half-court offence).
+    End,
+}
+
+/// Translate screen-relative direction bits into court axes (`UP` = -y, `RIGHT` = +x).
+fn map_dir(bits: u8, view: View) -> u8 {
+    match view {
+        View::Side => bits,
+        View::End => {
+            let mut out = 0;
+            if bits & input::UP != 0 {
+                out |= input::RIGHT; // toward the basket
+            }
+            if bits & input::DOWN != 0 {
+                out |= input::LEFT;
+            }
+            if bits & input::LEFT != 0 {
+                out |= input::DOWN; // screen-left is +y when looking down the court
+            }
+            if bits & input::RIGHT != 0 {
+                out |= input::UP;
+            }
+            out
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Phase {
     Playing,
@@ -83,6 +121,9 @@ pub struct Game {
     pub clock: f32,
     pub shot_clock: f32,
     pub phase: Phase,
+    pub view: View,
+    /// View whose key mapping stays in force for a direction held across a camera cut.
+    legacy_view: Option<View>,
     pub message: Option<(&'static str, f32)>,
     pub ticks: u64,
     rng: u32,
@@ -108,6 +149,8 @@ impl Game {
             clock: PERIOD_SECS,
             shot_clock: SHOT_CLOCK_SECS,
             phase: Phase::Playing,
+            view: View::Side,
+            legacy_view: None,
             message: None,
             ticks: 0,
             rng: seed.wrapping_mul(0x9E37_79B1) | 1,
@@ -140,6 +183,8 @@ impl Game {
             };
         }
         self.controlled = 0;
+        self.view = View::Side;
+        self.legacy_view = None;
         self.shot_clock = SHOT_CLOCK_SECS;
         self.ball.state = BallState::Held(0);
         self.ball.vx = 0.0;
@@ -182,9 +227,38 @@ impl Game {
         }
 
         self.update_clocks();
+        let raw = buttons;
+        let buttons = self.remap_buttons(raw);
         self.handle_actions(pressed, buttons);
         self.move_players(buttons);
         self.update_ball();
+        self.update_view(raw);
+    }
+
+    /// Apply the current camera's direction mapping to the raw key bitmask.
+    fn remap_buttons(&mut self, raw: u8) -> u8 {
+        let dirs = raw & DIR_MASK;
+        if dirs == 0 {
+            self.legacy_view = None;
+        }
+        let view = self.legacy_view.unwrap_or(self.view);
+        (raw & !DIR_MASK) | map_dir(dirs, view)
+    }
+
+    /// Cut between the side and end-on cameras based on where the ball is.
+    fn update_view(&mut self, raw: u8) {
+        let next = match self.view {
+            View::Side if self.ball.x >= END_VIEW_ENTER_X => View::End,
+            View::End if self.ball.x <= END_VIEW_EXIT_X => View::Side,
+            v => v,
+        };
+        if next != self.view {
+            // Keep a held direction meaning what it meant until the player lets go.
+            if raw & DIR_MASK != 0 {
+                self.legacy_view = Some(self.view);
+            }
+            self.view = next;
+        }
     }
 
     fn update_clocks(&mut self) {
@@ -674,5 +748,61 @@ mod tests {
         assert_eq!(a.score, b.score);
         assert_eq!(a.ball.x.to_bits(), b.ball.x.to_bits());
         assert_eq!(a.players[0].y.to_bits(), b.players[0].y.to_bits());
+    }
+
+    #[test]
+    fn view_cuts_with_hysteresis() {
+        let mut g = Game::new(1);
+        assert_eq!(g.view, View::Side);
+        g.players[0].x = END_VIEW_ENTER_X + 1.0;
+        g.step(0);
+        assert_eq!(g.view, View::End);
+        g.players[0].x = (END_VIEW_ENTER_X + END_VIEW_EXIT_X) / 2.0;
+        g.step(0);
+        assert_eq!(g.view, View::End, "no flicker between the two thresholds");
+        g.players[0].x = END_VIEW_EXIT_X - 3.0; // the held ball sits 1.4 ft ahead
+        g.step(0);
+        assert_eq!(g.view, View::Side);
+    }
+
+    #[test]
+    fn end_view_directions_are_relative_to_the_screen() {
+        let mut g = Game::new(1);
+        g.players[0].x = END_VIEW_ENTER_X + 2.0;
+        g.players[0].y = 25.0;
+        g.step(0);
+        assert_eq!(g.view, View::End);
+        let (x0, y0) = (g.players[0].x, g.players[0].y);
+        run(&mut g, input::UP, 20);
+        assert!(g.players[0].x > x0 + 1.0, "up runs toward the basket");
+        let (x1, y1) = (g.players[0].x, g.players[0].y);
+        assert!((y1 - y0).abs() < 0.01);
+        run(&mut g, 0, 30);
+        let y2 = g.players[0].y;
+        run(&mut g, input::LEFT, 20);
+        assert!(
+            g.players[0].y > y2 + 1.0,
+            "screen-left is +y in the end view"
+        );
+        assert!(g.players[0].x < x1 + 3.0);
+    }
+
+    #[test]
+    fn held_direction_survives_the_camera_cut() {
+        let mut g = Game::new(1);
+        g.players[0].x = END_VIEW_ENTER_X - 1.0;
+        g.players[0].y = 25.0;
+        // Run right (+x) in the side view straight through the cut.
+        run(&mut g, RIGHT, 40);
+        assert_eq!(g.view, View::End);
+        assert!(
+            (g.players[0].y - 25.0).abs() < 0.5,
+            "still running toward the basket"
+        );
+        // After releasing, the same key means "screen right" = -y.
+        run(&mut g, 0, 40);
+        let y = g.players[0].y;
+        run(&mut g, RIGHT, 20);
+        assert!(g.players[0].y < y - 1.0);
     }
 }
