@@ -5,13 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>NtBA — Not the Basketball Association</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 8 8%27%3E%3Ccircle cx=%274%27 cy=%274%27 r=%274%27 fill=%27%23e86818%27/%3E%3C/svg%3E">
+  <meta name="description" content="NtBA — Not the Basketball Association. An open-source, five-on-five pixel-art basketball game that runs in your browser.">
+  <meta property="og:title" content="NtBA — Not the Basketball Association">
+  <meta property="og:description" content="Open-source retro basketball in the browser. Rust + WebAssembly, 320x200 pixel art.">
+  <meta property="og:image" content="https://eyalro.github.io/NtBA/box-art.jpg">
+  <meta property="og:type" content="website">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <main>
-    <header>
-      <h1>NtBA <span>Not the Basketball Association</span></h1>
-    </header>
+    <h1 class="sr-only">NtBA — Not the Basketball Association</h1>
+    <figure class="box">
+      <img src="box-art.jpg" width="1024" height="1536" alt="NtBA box art: a player in a gold number 32 jersey dunks over two defenders in green, under the title NtBA — Not the Basketball Association">
+    </figure>
+    <section class="play">
     <canvas id="screen" width="320" height="200" tabindex="0" aria-label="NtBA game screen"></canvas>
     <p id="status" role="status">Loading…</p>
     <p class="help">
@@ -23,6 +30,7 @@
       NtBA is an open-source project (GPL-3.0) and we'd love your help — code, pixel art, ideas and bug reports all welcome.
       <a href="https://github.com/EyalRo/NtBA" target="_blank" rel="noopener">Join us on GitHub &rarr;</a>
     </aside>
+    </section>
   </main>
   <script type="module" src="main.js"></script>
 </body>

@@ -1,20 +1,66 @@
-:root { color-scheme: dark; }
-html, body { margin: 0; height: 100%; background: #111118; color: #ccc; font: 14px/1.4 ui-monospace, monospace; }
-main { min-height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 12px; box-sizing: border-box; }
+:root {
+  color-scheme: dark;
+  /* palette lifted from the box art */
+  --bg: #080a18;
+  --panel: #10142c;
+  --line: #243066;
+  --gold: #f8b818;
+  --orange: #ee6a1a;
+  --red: #d8281c;
+  --text: #d6d9ee;
+  --muted: #8a90b8;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); font: 14px/1.5 ui-monospace, monospace; }
+body {
+  /* arena glow behind the page, like the lights in the box art */
+  background:
+    radial-gradient(ellipse 60% 40% at 25% 0%, #1b2a6a66, transparent),
+    radial-gradient(ellipse 50% 40% at 85% 100%, #ee6a1a22, transparent),
+    var(--bg);
+  background-attachment: fixed;
+}
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+main {
+  max-width: 1180px; margin: 0 auto; padding: 20px 16px 32px;
+  display: grid; gap: 24px; align-items: start; justify-items: center;
+  grid-template-columns: minmax(220px, 340px) minmax(0, 1fr);
+}
+.box { margin: 0; position: sticky; top: 20px; }
+.box img {
+  display: block; width: 100%; height: auto; border-radius: 4px;
+  box-shadow: 0 0 0 1px #000, 0 18px 40px #000c, 0 0 60px #ee6a1a30;
+  transform: rotate(-1.5deg);
+}
+.play { width: 100%; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+
 canvas {
-  width: min(100vw - 24px, (100vh - 290px) * 1.3333);
+  width: 100%;
+  max-width: calc((100vh - 230px) * 1.3333);
+  min-width: min(100%, 320px);
   aspect-ratio: 4 / 3; /* 320x200 was shown on 4:3 CRTs: slightly tall pixels */
   image-rendering: pixelated;   /* nearest-neighbour scaling */
   image-rendering: crisp-edges;
   image-rendering: pixelated;
-  background: #000;
-  outline: none;
+  background: #000; outline: none;
+  border: 3px solid var(--line); border-radius: 4px;
+  box-shadow: 0 0 0 1px #000, 0 12px 32px #000a;
 }
-.help { max-width: 60em; text-align: center; margin: 0; color: #889; }
-#status { margin: 0; min-height: 1.4em; color: #f4c820; }
-kbd { background: #2a2a36; border-radius: 3px; padding: 0 5px; color: #eee; }
-h1 { margin: 0; font-size: 22px; letter-spacing: 2px; color: #e86818; text-align: center; }
-h1 span { display: block; font-size: 13px; letter-spacing: 1px; font-weight: normal; color: #889; }
-.join { max-width: 60em; text-align: center; padding: 8px 14px; border: 1px solid #2a2a36; border-radius: 4px; background: #181822; }
-.join a { color: #f4c820; font-weight: bold; white-space: nowrap; }
+canvas:focus-visible { border-color: var(--gold); }
+.help { max-width: 60em; text-align: center; margin: 0; color: var(--muted); }
+#status { margin: 0; min-height: 1.4em; color: var(--gold); }
+kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; color: #fff; }
+.join {
+  max-width: 60em; text-align: center; padding: 10px 16px;
+  border: 1px solid var(--line); border-left: 4px solid var(--orange); border-radius: 4px; background: var(--panel);
+}
+.join a { color: var(--gold); font-weight: bold; white-space: nowrap; }
 .join a:hover, .join a:focus-visible { color: #fff; }
+
+/* Narrow screens: box art becomes a compact banner above the game. */
+@media (max-width: 760px) {
+  main { grid-template-columns: 1fr; }
+  .box { position: static; width: min(55vw, 240px); }
+  canvas { max-width: 100%; }
+}
