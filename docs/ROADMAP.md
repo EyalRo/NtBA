@@ -13,6 +13,21 @@
 
 Ideas we like and have not committed to. Unordered. Nothing here blocks the POC or the MVP.
 
+### Selectable team size (1-5 players per side)
+Let the player choose how many players each team fields, from 1-on-1 up to the full 5-on-5. The
+simulation, bot and camera should take the on-court count as a parameter rather than assuming five
+(1-on-1 is the *One-on-One* lineage, 3-on-3 is a streetball-style half-court game). Affects
+spacing, defensive assignments, the lineup UI and the roster/stats HUD.
+
+### 1984 mode (period-accurate graphics)
+A selectable **1984 look** alongside the default early-90s one: a low-resolution, 16-colour
+home-computer style with chunky sprites, a flat court on a black background, a simple scoreboard
+(names, score, clock, shot clock) and big blocky text — the feel of early-80s one-on-one games such
+as EA's *Dr. J and Larry Bird Go One-on-One* (1983) on the Commodore 64. It is a renderer/palette
+swap over the same core (a second palette and sprite set at a lower resolution), pairs naturally
+with the 1-on-1 team-size option above, and, like everything else here, uses **original** art
+only — no assets copied from those games.
+
 ### Create-a-player
 Let people **create their own players**, as *TV Sports: Basketball* (Cinemaware, 1990) did. Name,
 jersey number, position, height/weight, skin and hair, and a budget of attribute points (shooting,
