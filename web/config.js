@@ -1,4 +1,4 @@
-// Online play needs a deployed signalling service (see signaling/README.md).
-// Put its base URL here, e.g. 'https://ntba-signaling.<your-account>.workers.dev'.
-// While this is empty the online-play panel stays hidden and the game is solo/local only.
-export const SIGNALING_URL = '';
+// Online play needs a deployed signalling service (see the project wiki, "Online Play").
+// Base URL of the deployed service; leave empty to hide the online-play panel and play
+// local/solo only.
+export const SIGNALING_URL = 'https://ntba-signaling.isdino.workers.dev';
