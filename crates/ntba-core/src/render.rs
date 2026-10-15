@@ -7,7 +7,9 @@
 //! scoreboard.
 
 use crate::font::{glyph, text_width, GLYPH_W};
-use crate::game::{BallState, Game, Phase, View, HOOP_X, HOOP_Y, RIM_Z};
+use crate::game::{
+    team_of, BallState, Basket, Game, Phase, View, HOOP_X, HOOP_Y, PLAYERS, RIM_Z, TEAM_SIZE,
+};
 use crate::palette::*;
 use crate::people::{end_person, seated_person, side_person, Look, Pose, STILL};
 use crate::sprite::Sprite;
@@ -120,6 +122,26 @@ impl Framebuffer {
             if e2 <= dx {
                 err += dx;
                 y += sy;
+            }
+        }
+    }
+
+    /// Fill the triangle with corners `v` (pixel centres inside it).
+    fn triangle(&mut self, v: [(f32, f32); 3], c: u8) {
+        let x0 = v.iter().map(|p| p.0).fold(f32::MAX, f32::min).floor() as i32;
+        let x1 = v.iter().map(|p| p.0).fold(f32::MIN, f32::max).ceil() as i32;
+        let y0 = v.iter().map(|p| p.1).fold(f32::MAX, f32::min).floor() as i32;
+        let y1 = v.iter().map(|p| p.1).fold(f32::MIN, f32::max).ceil() as i32;
+        for y in y0..=y1 {
+            for x in x0..=x1 {
+                let (px, py) = (x as f32 + 0.5, y as f32 + 0.5);
+                let edge = |a: (f32, f32), b: (f32, f32)| {
+                    (b.0 - a.0) * (py - a.1) - (b.1 - a.1) * (px - a.0)
+                };
+                let e = [edge(v[0], v[1]), edge(v[1], v[2]), edge(v[2], v[0])];
+                if e.iter().all(|&k| k >= 0.0) || e.iter().all(|&k| k <= 0.0) {
+                    self.px(x, y, c);
+                }
             }
         }
     }
@@ -250,14 +272,23 @@ impl Cam {
     fn project(self, x: f32, y: f32, z: f32) -> (i32, i32) {
         match self.view {
             View::Side => project(self.x, x, y, z),
-            View::End => project_end(x, y, z),
+            View::End(Basket::Right) => project_end(x, y, z),
+            View::End(Basket::Left) => project_end(COURT_L - x, COURT_W - y, z),
         }
     }
 
     fn z_px(self) -> f32 {
         match self.view {
             View::Side => Z_PX,
-            View::End => END_ZPX,
+            View::End(_) => END_ZPX,
+        }
+    }
+
+    /// Height in pixels of a standing player sprite, feet to top of head.
+    fn body_h(self) -> i32 {
+        match self.view {
+            View::Side => 47,
+            View::End(_) => 38,
         }
     }
 }
@@ -276,8 +307,9 @@ pub fn draw(g: &Game, fb: &mut Framebuffer) {
     };
     match g.view {
         View::Side => draw_side_scene(g, fb, cam),
-        View::End => draw_end_scene(g, fb, cam),
+        View::End(_) => draw_end_scene(g, fb, cam),
     }
+    draw_offscreen_markers(g, fb, cam);
     draw_bottom_strip(fb);
     draw_scoreboard(g, fb);
     draw_overlays(g, fb);
@@ -427,26 +459,38 @@ fn draw_crowd(fb: &mut Framebuffer, cam: f32, ticks: u64) {
     }
 }
 
-const fn look(skin: usize, hair: usize, number: u8) -> Look {
+const fn look(team: usize, skin: usize, hair: usize, number: u8) -> Look {
+    let home = team == 0;
     Look {
         skin,
         hair,
-        top: GOLD,
-        trim: PURPLE,
-        shorts: PURPLE,
+        top: if home { GOLD } else { GREEN },
+        trim: if home { PURPLE } else { CLOTH },
+        shorts: if home { PURPLE } else { GREEN },
         number,
         stripes: false,
         suit: false,
     }
 }
 
-const TEAM_LOOKS: [Look; 5] = [
-    look(1, 0, 4),
-    look(0, 2, 12),
-    look(2, 0, 23),
-    look(1, 1, 32),
-    look(2, 0, 45),
+const TEAM_LOOKS: [[Look; 5]; 2] = [
+    [
+        look(0, 1, 0, 4),
+        look(0, 0, 2, 12),
+        look(0, 2, 0, 23),
+        look(0, 1, 1, 32),
+        look(0, 2, 0, 45),
+    ],
+    [
+        look(1, 0, 1, 3),
+        look(1, 2, 0, 8),
+        look(1, 1, 2, 10),
+        look(1, 2, 1, 21),
+        look(1, 0, 0, 33),
+    ],
 ];
+/// Light tone of each team's colour, for the controlled-player marker and the scoreboard.
+const TEAM_ACCENT: [u8; 2] = [GOLD[3], GREEN[3]];
 const REF_LOOK: Look = Look {
     skin: 1,
     hair: 0,
@@ -482,7 +526,7 @@ fn draw_bench_area(fb: &mut Framebuffer, cam: f32) {
     // Home bench in gold warm-ups, visitors in green, coaches in suits.
     for (k, x) in [8.0_f32, 11.5, 15.0, 18.5, 22.0].iter().enumerate() {
         let (sx, _) = project(cam, *x, -1.5, 0.0);
-        let l = &TEAM_LOOKS[k];
+        let l = &TEAM_LOOKS[0][k];
         fb.sprite(&seated_person(GOLD, l.skin, l.hair, false), sx, BENCH_FEET);
     }
     for (k, x) in [66.0_f32, 69.5, 73.0, 76.5, 80.0].iter().enumerate() {
@@ -824,9 +868,13 @@ fn draw_entities(g: &Game, fb: &mut Framebuffer, cam: Cam) {
     let side = cam.view == View::Side;
     let ref_x = g.ball.x.clamp(8.0, COURT_L - 8.0);
     let ref_y = COURT_W + 2.0;
-    // Painter's order: far to near. Side view: small y is far. End view: large x is far.
-    let key = |x: f32, y: f32| if side { y } else { -x };
-    let mut order: Vec<(f32, Drawable)> = Vec::with_capacity(7);
+    // Painter's order: far to near. Side view: small y is far. End view: nearer the basket is far.
+    let key = |x: f32, y: f32| match cam.view {
+        View::Side => y,
+        View::End(Basket::Right) => -x,
+        View::End(Basket::Left) => x,
+    };
+    let mut order: Vec<(f32, Drawable)> = Vec::with_capacity(PLAYERS + 3);
     for (i, p) in g.players.iter().enumerate() {
         order.push((key(p.x, p.y), Drawable::Player(i)));
     }
@@ -869,10 +917,10 @@ fn draw_entities(g: &Game, fb: &mut Framebuffer, cam: Cam) {
 fn ball_screen(g: &Game, cam: Cam) -> (i32, i32) {
     match (cam.view, g.ball.state) {
         // Seen from behind, a dribbled ball would hide behind the body: show it at the hand.
-        (View::End, BallState::Held(h)) => {
+        (View::End(b), BallState::Held(h)) => {
             let p = &g.players[h];
             let (hx, hy) = cam.project(p.x, p.y, 0.0);
-            let side = if p.facing >= 0 { 7 } else { -7 };
+            let side = if faces_basket(b, p.facing) { 7 } else { -7 };
             (hx + side, hy - (g.ball.z * END_ZPX) as i32 - 2)
         }
         _ => {
@@ -880,6 +928,11 @@ fn ball_screen(g: &Game, cam: Cam) -> (i32, i32) {
             (sx, sy - 2)
         }
     }
+}
+
+/// True when a player with this facing has their back to the end-on camera.
+fn faces_basket(b: Basket, facing: i8) -> bool {
+    (facing >= 0) == (b == Basket::Right)
 }
 
 fn draw_ball(g: &Game, fb: &mut Framebuffer, cam: Cam) {
@@ -916,30 +969,30 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: Cam, i: usize) {
         jump: p.jump > 0.0,
         ball_hand,
     };
-    let controlled = i == g.controlled && g.phase == Phase::Playing;
-    let head = match cam.view {
+    let team = team_of(i);
+    let look = &TEAM_LOOKS[team][i % TEAM_SIZE];
+    let controlled = i == g.controlled[team] && g.phase == Phase::Playing;
+    match cam.view {
         View::Side => {
             fb.sprite(
-                &side_person(&TEAM_LOOKS[i], p.facing as i32, &pose, controlled),
+                &side_person(look, p.facing as i32, &pose, controlled),
                 sx,
                 sy,
             );
-            47
         }
-        View::End => {
+        View::End(b) => {
             // Moving toward the basket shows the player's back.
             fb.sprite(
-                &end_person(&TEAM_LOOKS[i], p.facing >= 0, &pose, controlled),
+                &end_person(look, faces_basket(b, p.facing), &pose, controlled),
                 sx,
                 sy,
             );
-            38
         }
-    };
+    }
     if controlled && (g.ticks / 20) % 2 == 0 {
-        let top = sy - head;
+        let top = sy - cam.body_h();
         for (k, w) in [7, 5, 3, 1].iter().enumerate() {
-            fb.rect(sx - w / 2, top + k as i32, *w, 1, WHITE);
+            fb.rect(sx - w / 2, top + k as i32, *w, 1, TEAM_ACCENT[team]);
         }
         fb.rect(sx - 4, top - 1, 9, 1, BLACK);
     }
@@ -947,13 +1000,54 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: Cam, i: usize) {
 
 // ---------------------------------------------------------------- HUD
 
+/// Edge arrow in the shirt colour pointing at each off-screen controlled player.
+fn draw_offscreen_markers(g: &Game, fb: &mut Framebuffer, cam: Cam) {
+    if g.phase != Phase::Playing {
+        return;
+    }
+    const MARGIN: f32 = 7.0;
+    for (team, &i) in g.controlled.iter().enumerate() {
+        let p = &g.players[i];
+        let (sx, sy) = cam.project(p.x, p.y, 0.0);
+        let top = sy - cam.body_h();
+        if (0..SCREEN_W as i32).contains(&sx) && sy >= 0 && top < BOTTOM_STRIP {
+            continue;
+        }
+        let (bx, by) = (sx as f32, (sy + top) as f32 * 0.5);
+        let cx = bx.clamp(MARGIN, SCREEN_W as f32 - MARGIN);
+        let cy = by.clamp(MARGIN, BOTTOM_STRIP as f32 - MARGIN);
+        let (dx, dy) = (bx - cx, by - cy);
+        let len = (dx * dx + dy * dy).sqrt().max(0.001);
+        let (ux, uy) = (dx / len, dy / len);
+        let tip = (cx + ux * 5.0, cy + uy * 5.0);
+        let (mx, my) = (cx - ux * 4.0, cy - uy * 4.0);
+        let corners = [
+            tip,
+            (mx - uy * 5.0, my + ux * 5.0),
+            (mx + uy * 5.0, my - ux * 5.0),
+        ];
+        let shirt = TEAM_LOOKS[team][0].top;
+        fb.triangle(corners, shirt[2]);
+        for k in 0..3 {
+            let (a, b) = (corners[k], corners[(k + 1) % 3]);
+            fb.line(
+                a.0.round() as i32,
+                a.1.round() as i32,
+                b.0.round() as i32,
+                b.1.round() as i32,
+                shirt[0],
+            );
+        }
+    }
+}
+
 fn draw_bottom_strip(fb: &mut Framebuffer) {
     fb.rect(0, BOTTOM_STRIP, SCREEN_W as i32, 16, APRON[0]);
     fb.rect(0, BOTTOM_STRIP, SCREEN_W as i32, 1, APRON[2]);
     fb.text_centered(
         160,
         190,
-        "ARROWS MOVE  X SHOOT  Z PASS  C SWITCH",
+        "P1 WASD  Z PASS X SHOOT C SWITCH    P2 ARROWS  J K L",
         STEEL[2],
         1,
     );
@@ -961,27 +1055,35 @@ fn draw_bottom_strip(fb: &mut Framebuffer) {
 
 fn draw_scoreboard(g: &Game, fb: &mut Framebuffer) {
     // Compact framed panel in the corner, like the later EA basketball games.
-    fb.rect(2, 2, 136, 30, STEEL[2]);
-    fb.bevel(2, 2, 136, 30, WHITE, STEEL[0]);
-    fb.bevel(3, 3, 134, 28, STEEL[1], STEEL[3]);
-    fb.rect(4, 4, 132, 26, BLACK);
+    fb.rect(2, 2, 100, 54, STEEL[2]);
+    fb.bevel(2, 2, 100, 54, WHITE, STEEL[0]);
+    fb.bevel(3, 3, 98, 52, STEEL[1], STEEL[3]);
+    fb.rect(4, 4, 96, 50, BLACK);
 
     fb.text(10, 6, "TIME", WHITE, 1);
-    fb.text(66, 6, "HOME", WHITE, 1);
-    fb.text(108, 6, "SHOT", WHITE, 1);
-
+    fb.text(70, 6, "SHOT", WHITE, 1);
     let secs = g.clock.ceil() as u32;
     fb.dot_text(10, 13, &format!("{}:{:02}", secs / 60, secs % 60));
-    fb.dot_text(66, 13, &format!("{:03}", g.score));
-    fb.dot_text(108, 13, &format!("{:02}", g.shot_clock.ceil() as u32));
+    fb.dot_text(70, 13, &format!("{:02}", g.shot_clock.ceil() as u32));
+
+    fb.text(10, 32, "HOME", TEAM_ACCENT[0], 1);
+    fb.text(58, 32, "AWAY", TEAM_ACCENT[1], 1);
+    fb.dot_text(10, 39, &format!("{:03}", g.score[0]));
+    fb.dot_text(58, 39, &format!("{:03}", g.score[1]));
 }
 
 fn draw_overlays(g: &Game, fb: &mut Framebuffer) {
     if g.phase == Phase::Final {
         fb.rect(70, 104, 180, 44, BLACK);
         fb.bevel(70, 104, 180, 44, STEEL[2], STEEL[0]);
+        let result = match g.score[0].cmp(&g.score[1]) {
+            core::cmp::Ordering::Greater => "HOME WINS",
+            core::cmp::Ordering::Less => "AWAY WINS",
+            core::cmp::Ordering::Equal => "TIE GAME",
+        };
         fb.text_centered(160, 110, "FINAL", LED, 4);
-        fb.text_centered(160, 134, "PRESS ENTER", WHITE, 1);
+        fb.text_centered(160, 133, result, WHITE, 1);
+        fb.text_centered(160, 140, "PRESS ENTER", STEEL[2], 1);
         return;
     }
     if let Some((msg, _)) = g.message {
@@ -995,15 +1097,16 @@ fn draw_overlays(g: &Game, fb: &mut Framebuffer) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::input::{PASS, RIGHT, SHOOT};
+    use crate::input::{DOWN, LEFT, PASS, RIGHT, SHOOT, UP};
 
     #[test]
     fn renders_every_state_inside_the_palette() {
         let mut g = Game::new(3);
         let mut fb = Framebuffer::new();
         let script = [RIGHT, RIGHT, PASS, 0, 0, SHOOT, 0, 0];
+        let away = [LEFT, SHOOT, 0, DOWN, SHOOT, LEFT];
         for t in 0..1500usize {
-            g.step(script[(t / 20) % script.len()]);
+            g.step([script[(t / 20) % script.len()], away[(t / 17) % away.len()]]);
             if t % 31 == 0 {
                 draw(&g, &mut fb);
                 assert!(fb.idx.iter().all(|&c| (c as usize) < PALETTE.len()));
@@ -1036,7 +1139,7 @@ mod tests {
         let mut g = Game::new(1);
         let mut fb = Framebuffer::new();
         for _ in 0..600 {
-            g.step(RIGHT);
+            g.step([RIGHT, 0]);
             draw(&g, &mut fb);
             assert!((CAM_MIN..=CAM_MAX).contains(&fb.cam_x));
         }
@@ -1049,10 +1152,10 @@ mod tests {
         draw(&g, &mut fb);
         let side_frame = fb.idx.clone();
         g.players[0].x = crate::game::END_VIEW_ENTER_X + 4.0;
-        g.step(0);
-        assert_eq!(g.view, View::End);
+        g.step([0, 0]);
+        assert_eq!(g.view, View::End(Basket::Right));
         for t in 0..120 {
-            g.step(if t < 60 { RIGHT } else { SHOOT });
+            g.step([if t < 60 { RIGHT } else { SHOOT }, 0]);
             draw(&g, &mut fb);
             assert!(fb.idx.iter().all(|&c| (c as usize) < PALETTE.len()));
         }
@@ -1060,10 +1163,44 @@ mod tests {
             fb.idx, side_frame,
             "the end-on view looks different from the side view"
         );
-        g.players[0].x = 20.0;
+        g.players[0].x = 40.0;
         g.ball.state = BallState::Held(0);
-        g.step(0);
+        g.step([0, 0]);
         assert_eq!(g.view, View::Side);
         draw(&g, &mut fb);
+    }
+
+    #[test]
+    fn off_screen_controlled_player_gets_an_edge_arrow() {
+        let mut g = Game::new(2);
+        let mut fb = Framebuffer::new();
+        draw(&g, &mut fb);
+        let on_screen = fb.idx.clone();
+        let away = g.controlled[1];
+        g.players[away].x = 90.0;
+        g.players[away].y = 25.0;
+        draw(&g, &mut fb);
+        let edge_changed = (60..BOTTOM_STRIP).any(|y| {
+            (SCREEN_W - 12..SCREEN_W).any(|x| {
+                let i = y as usize * SCREEN_W + x;
+                fb.idx[i] == GREEN[2] && on_screen[i] != GREEN[2]
+            })
+        });
+        assert!(edge_changed, "a green arrow on the right edge");
+    }
+
+    #[test]
+    fn left_end_view_renders_inside_the_palette() {
+        let mut g = Game::new(5);
+        let mut fb = Framebuffer::new();
+        g.reset_possession(1);
+        g.players[g.controlled[1]].x = COURT_L - crate::game::END_VIEW_ENTER_X - 4.0;
+        g.step([0, 0]);
+        assert_eq!(g.view, View::End(Basket::Left));
+        for t in 0..120 {
+            g.step([0, if t < 60 { UP } else { SHOOT }]);
+            draw(&g, &mut fb);
+            assert!(fb.idx.iter().all(|&c| (c as usize) < PALETTE.len()));
+        }
     }
 }
