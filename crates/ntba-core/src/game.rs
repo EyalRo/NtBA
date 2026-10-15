@@ -165,6 +165,31 @@ pub enum Phase {
     Final,
 }
 
+/// 64-bit FNV-1a, fed byte by byte so the result never depends on endianness or layout.
+struct Fnv(u64);
+
+impl Fnv {
+    fn new() -> Self {
+        Fnv(0xcbf2_9ce4_8422_2325)
+    }
+
+    fn u8(&mut self, b: u8) {
+        self.0 = (self.0 ^ b as u64).wrapping_mul(0x0000_0100_0000_01b3);
+    }
+
+    fn u32(&mut self, v: u32) {
+        v.to_le_bytes().iter().for_each(|&b| self.u8(b));
+    }
+
+    fn u64(&mut self, v: u64) {
+        v.to_le_bytes().iter().for_each(|&b| self.u8(b));
+    }
+
+    fn f32(&mut self, v: f32) {
+        self.u32(v.to_bits());
+    }
+}
+
 pub struct Game {
     pub players: [Player; PLAYERS],
     pub ball: Ball,
@@ -220,6 +245,77 @@ impl Game {
         }
         g.reset_possession(0);
         g
+    }
+
+    /// A 64-bit FNV-1a hash of every field that influences the simulation. Two peers that fed
+    /// the same inputs to the same seed must report the same hash on every tick; it is how
+    /// online play detects a desync. Floats are hashed by bit pattern.
+    pub fn state_hash(&self) -> u64 {
+        let mut h = Fnv::new();
+        for p in &self.players {
+            for v in [p.x, p.y, p.vx, p.vy, p.anim, p.jump] {
+                h.f32(v);
+            }
+            h.u8(p.facing as u8);
+        }
+        let b = &self.ball;
+        for v in [b.x, b.y, b.z, b.vx, b.vy, b.vz] {
+            h.f32(v);
+        }
+        match b.state {
+            BallState::Held(i) => {
+                h.u8(0);
+                h.u8(i as u8);
+            }
+            BallState::Pass { to, t } => {
+                h.u8(1);
+                h.u8(to as u8);
+                h.f32(t);
+            }
+            BallState::Shot { t, dur, made } => {
+                h.u8(2);
+                h.f32(t);
+                h.f32(dur);
+                h.u8(made as u8);
+            }
+            BallState::Loose => h.u8(3),
+            BallState::Scored { t } => {
+                h.u8(4);
+                h.f32(t);
+            }
+        }
+        for c in self.controlled {
+            h.u8(c as u8);
+        }
+        h.u8(self.offense as u8);
+        for s in self.score {
+            h.u32(s);
+        }
+        h.f32(self.clock);
+        h.f32(self.shot_clock);
+        h.u8(self.phase as u8);
+        for v in std::iter::once(Some(self.view)).chain(self.legacy_view) {
+            match v {
+                None => h.u8(0),
+                Some(View::Side) => h.u8(1),
+                Some(View::End(Basket::Left)) => h.u8(2),
+                Some(View::End(Basket::Right)) => h.u8(3),
+            }
+        }
+        match self.message {
+            None => h.u8(0),
+            Some((text, left)) => {
+                h.u8(1);
+                text.bytes().for_each(|c| h.u8(c));
+                h.f32(left);
+            }
+        }
+        h.u64(self.ticks);
+        h.u32(self.rng);
+        self.prev_input.iter().for_each(|&i| h.u8(i));
+        h.u32(self.pending_points);
+        h.f32(self.steal_lock);
+        h.0
     }
 
     fn rand(&mut self) -> f32 {

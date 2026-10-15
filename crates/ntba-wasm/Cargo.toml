@@ -12,3 +12,4 @@ crate-type = ["cdylib", "rlib"]
 
 [dependencies]
 ntba-core = { path = "../ntba-core" }
+ntba-net = { path = "../ntba-net" }

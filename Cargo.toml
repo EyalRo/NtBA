@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["crates/ntba-core", "crates/ntba-wasm"]
+members = ["crates/ntba-core", "crates/ntba-net", "crates/ntba-wasm"]
 
 [workspace.package]
 version = "0.1.0"

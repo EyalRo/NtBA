@@ -1,4 +1,4 @@
-//! WebAssembly front door for `ntba-core`.
+//! WebAssembly front door for `ntba-core` and `ntba-net`.
 //!
 //! A plain C ABI is used on purpose: no `wasm-bindgen`, no `wasm-pack`, no JS glue
 //! generation. The host (see `web/main.js`) calls `ntba_init`, then every 1/60 s
@@ -7,13 +7,28 @@
 
 use std::cell::RefCell;
 
+mod net;
+
 use ntba_core::game::Game;
 use ntba_core::render::{self, Framebuffer};
+use ntba_core::replay::{InputLog, DETERMINISM_SEED, DETERMINISM_SEED_HASH, DETERMINISM_TICKS};
 use ntba_core::{SCREEN_H, SCREEN_W, TICK_HZ};
 
 struct State {
     game: Game,
     fb: Framebuffer,
+    /// An online match in progress (or being set up); see `net.rs`.
+    online: Option<net::Online>,
+}
+
+impl State {
+    /// The game being shown: the online match once it has started, else the solo game.
+    fn shown(&self) -> &Game {
+        self.online
+            .as_ref()
+            .and_then(|o| o.session.game())
+            .unwrap_or(&self.game)
+    }
 }
 
 thread_local! {
@@ -31,6 +46,7 @@ pub extern "C" fn ntba_init(seed: u32) {
         *s.borrow_mut() = Some(State {
             game: Game::new(seed),
             fb: Framebuffer::new(),
+            online: None,
         })
     });
 }
@@ -44,7 +60,14 @@ pub extern "C" fn ntba_step(buttons: u32) {
 /// Draw the current game state into the framebuffer.
 #[no_mangle]
 pub extern "C" fn ntba_render() {
-    with_state(|s| render::draw(&s.game, &mut s.fb));
+    with_state(|s| {
+        let State { game, fb, online } = s;
+        let game = online
+            .as_ref()
+            .and_then(|o| o.session.game())
+            .unwrap_or(game);
+        render::draw(game, fb)
+    });
 }
 
 /// Pointer into wasm linear memory at the RGBA framebuffer (`width * height * 4` bytes).
@@ -72,5 +95,34 @@ pub extern "C" fn ntba_tick_hz() -> u32 {
 /// Points scored by `team` (0 = home, 1 = away).
 #[no_mangle]
 pub extern "C" fn ntba_score(team: u32) -> u32 {
-    with_state(|s| s.game.score.get(team as usize).copied().unwrap_or(0)).unwrap_or(0)
+    with_state(|s| s.shown().score.get(team as usize).copied().unwrap_or(0)).unwrap_or(0)
+}
+
+/// Replays the fixed synthetic input script and returns the low 32 bits of the final state
+/// hash. Together with `ntba_determinism_hash_hi` and the expected value it lets any build
+/// prove it simulates exactly like the reference (see `scripts/check-determinism.mjs`).
+#[no_mangle]
+pub extern "C" fn ntba_determinism_hash_lo() -> u32 {
+    determinism_hash() as u32
+}
+
+#[no_mangle]
+pub extern "C" fn ntba_determinism_hash_hi() -> u32 {
+    (determinism_hash() >> 32) as u32
+}
+
+#[no_mangle]
+pub extern "C" fn ntba_determinism_expected_lo() -> u32 {
+    DETERMINISM_SEED_HASH as u32
+}
+
+#[no_mangle]
+pub extern "C" fn ntba_determinism_expected_hi() -> u32 {
+    (DETERMINISM_SEED_HASH >> 32) as u32
+}
+
+fn determinism_hash() -> u64 {
+    InputLog::synthetic(DETERMINISM_SEED, DETERMINISM_TICKS)
+        .replay()
+        .state_hash()
 }

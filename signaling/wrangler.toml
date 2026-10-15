@@ -1,0 +1,42 @@
+name = "ntba-signaling"
+main = "src/index.js"
+compatibility_date = "2026-10-01"
+
+[vars]
+# Browser origins allowed to create rooms and open signalling sockets (comma separated).
+# Add your own Pages/custom domain here; keep localhost for `make serve`.
+ALLOWED_ORIGINS = "https://eyalro.github.io,http://localhost:8080"
+# Seconds a room code stays valid after creation.
+ROOM_TTL_SECONDS = "600"
+
+[[durable_objects.bindings]]
+name = "ROOMS"
+class_name = "Room"
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["Room"]
+
+# Per-IP, per-route limits (namespace ids are integers unique to your account). The rate-limit
+# API is per Cloudflare location and deliberately permissive, so these curb casual abuse; they
+# are not an accounting system.
+[[ratelimits]]
+name = "LIMITER"        # ICE lookups and WebSocket joins
+namespace_id = "740211"
+
+  [ratelimits.simple]
+  limit = 30
+  period = 60
+
+[[ratelimits]]
+name = "ROOM_LIMITER"   # room creation: each room is a Durable Object, so keep this tight
+namespace_id = "740212"
+
+  [ratelimits.simple]
+  limit = 6
+  period = 60
+
+# Optional TURN fallback. Never put these in this file: set them as secrets with
+#   wrangler secret put TURN_KEY_ID
+#   wrangler secret put TURN_KEY_API_TOKEN
+# Without them GET /ice returns STUN only.
