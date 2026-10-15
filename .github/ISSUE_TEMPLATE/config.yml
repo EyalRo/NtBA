@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Play the game
+    url: https://eyalro.github.io/NtBA/
+    about: Try NtBA in your browser, then tell us what you think.
+  - name: Wiki
+    url: https://github.com/EyalRo/NtBA/wiki
+    about: Vision, roadmap, developer guide and reference notes.

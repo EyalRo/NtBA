@@ -1,6 +1,6 @@
 # Visual notes from the reference screenshots
 
-Observations from the three images in [screenshots/](screenshots/) and how they compare with the
+Observations from the three images in [Reference Screenshots](Reference-Screenshots) and how they compare with the
 NtBA proof of concept (320x200, 16 colours, whole court on screen). Written by us; add to it.
 
 ## What the originals do
@@ -67,14 +67,14 @@ verdict: this is the graphics fidelity we are after.
 
 What NtBA did with it: the simulation now switches between a side view and an end-on view
 (`Game::view`), with screen-relative controls on the end-on view (see
-[../docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md)). The end-on view has its own front/back
+[Architecture](Architecture)). The end-on view has its own front/back
 sprites, a face-on backboard with the shot clock above it, staff behind the baseline and a court
 that converges toward the baseline. Not done yet: the stats panel and minimap, a dedicated
-free-throw view, and — far future — the presenter and commercials ([roadmap](../docs/ROADMAP.md)).
+free-throw view, and — far future — the presenter and commercials ([Roadmap](Roadmap)).
 
 ## Target look: a slightly later EA game
 
-[screenshots/later-ea-game-target-look.png](screenshots/later-ea-game-target-look.png) (provided
+[later-ea-game-target-look.png](images/later-ea-game-target-look.png) (provided
 by the project owner as "where we would like to get to"). What stands out, and what we did about it:
 
 - **Subtle floor.** Low-contrast planks in a light tan, thin 1-pixel black lines, a painted logo in
@@ -104,7 +104,7 @@ change the look.
 
 ## How NtBA compares today
 
-The proof of concept was reworked to chase this look (see `docs/screenshot.png`). Status:
+The proof of concept was reworked to chase this look (see the screenshots in the [README](https://github.com/EyalRo/NtBA#readme)). Status:
 
 | Aspect | Original | NtBA now | Still to do |
 | --- | --- | --- | --- |
@@ -117,7 +117,7 @@ The proof of concept was reworked to chase this look (see `docs/screenshot.png`)
 | Scoreboard | Amber dot-matrix, framed (compact in the later game) | Compact framed panel, dot-matrix digits | Team names, period |
 | Bench & table | Bench with coaches, scorer's table, ad boards | Both benches, standing coach, scorer's table, officials, ad boards | Cheerleaders, photographers, animation |
 | Crowd | Tiers, waving arms | Five parallax rows of shaded fans with aisles, waving arms and camera flashes | Signs and banners, reactions to scores |
-| Shot mechanic | Hold and release at the apex, tap = fake | Instant shot | See genesis-manual-notes.md |
+| Shot mechanic | Hold and release at the apex, tap = fake | Instant shot | See [Genesis Manual Notes](Genesis-Manual-Notes) |
 
 None of this is required for the current milestone (single-player versus a bot); it is a
 backlog of presentation details that carry the "televised game" feel the project is after.

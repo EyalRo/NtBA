@@ -5,8 +5,6 @@ crates/ntba-core   platform-independent game: simulation + software renderer (no
 crates/ntba-wasm   cdylib exposing ntba-core through a plain C ABI
 web/               static host page: canvas, keyboard, fixed-timestep loop
 scripts/           build-web.sh, serve.sh
-context/           reference material about the 1989 original (links and notes)
-docs/              vision, architecture
 ```
 
 ## Data flow
