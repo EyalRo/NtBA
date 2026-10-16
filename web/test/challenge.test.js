@@ -36,12 +36,13 @@ test('a room that arrives after the challenge was cancelled is closed', () => {
   assert.equal(r.state.out, null);
 });
 
-test('accept moves the challenge on and stops the timer', () => {
+test('accept moves the challenge on and restarts the timer', () => {
   let s = run(initialChallenges(), { type: 'start', to: 'B' }).state;
   s = run(s, { type: 'room', room: ROOM }).state;
   const r = run(s, { type: 'msg', from: 'B', msg: { type: 'accept' } });
   assert.equal(r.state.out.phase, 'accepted');
-  assert.deepEqual(has(r.effects, 'clearTimer'), { clearTimer: 'out' });
+  assert.deepEqual(has(r.effects, 'timer'), { timer: 'out' });
+  assert.equal(has(r.effects, 'clearTimer'), undefined);
 });
 
 test('accept from someone else is ignored', () => {
@@ -68,6 +69,53 @@ test('no answer within the timeout cancels and tells the target', () => {
   assert.ok(has(r.effects, 'cancelHost'));
   assert.deepEqual(has(r.effects, 'send'), { send: { to: 'B', msg: { type: 'cancel' } } });
   assert.deepEqual(has(r.effects, 'notify'), { notify: 'no-answer' });
+});
+
+function accepted() {
+  let s = run(initialChallenges(), { type: 'start', to: 'B' }).state;
+  s = run(s, { type: 'room', room: ROOM }).state;
+  return run(s, { type: 'msg', from: 'B', msg: { type: 'accept' } }).state;
+}
+
+test('an accepted challenge that never connects times out and cancels', () => {
+  const r = run(accepted(), { type: 'timeout', which: 'out' });
+  assert.equal(r.state.out, null);
+  assert.deepEqual(has(r.effects, 'send'), { send: { to: 'B', msg: { type: 'cancel' } } });
+  assert.ok(has(r.effects, 'cancelHost'));
+  assert.deepEqual(has(r.effects, 'notify'), { notify: 'no-connect' });
+});
+
+test('the target leaving the presence socket after accepting does not cancel the room', () => {
+  const s = accepted();
+  const r = run(s, { type: 'peer-left', id: 'B' });
+  assert.deepEqual(r.state, s);
+  assert.deepEqual(r.effects, []);
+});
+
+test('abandoning an outgoing challenge cancels hosting in any phase', () => {
+  const r = run(accepted(), { type: 'abandon' });
+  assert.equal(r.state.out, null);
+  assert.ok(has(r.effects, 'cancelHost'));
+  assert.deepEqual(has(r.effects, 'clearTimer'), { clearTimer: 'out' });
+  assert.deepEqual(run(initialChallenges(), { type: 'abandon' }).effects, []);
+});
+
+test('a match starting after accept clears the state and both timers', () => {
+  const r = run(accepted(), { type: 'match-started' });
+  assert.deepEqual(r.state, { out: null, inc: null });
+  assert.deepEqual(r.effects.filter((e) => e.clearTimer).map((e) => e.clearTimer).sort(), ['inc', 'out']);
+});
+
+test('accepting while busy declines instead of joining', () => {
+  const s = run(initialChallenges(), { type: 'msg', from: 'A', msg: { type: 'challenge', room: ROOM } }).state;
+  const r = run(s, { type: 'accept-in' }, { busy: true });
+  assert.equal(r.state.inc, null);
+  assert.equal(has(r.effects, 'join'), undefined);
+  assert.deepEqual(has(r.effects, 'send'), { send: { to: 'A', msg: { type: 'decline' } } });
+  assert.ok(has(r.effects, 'closePrompt'));
+  assert.deepEqual(has(r.effects, 'notify'), { notify: 'busy' });
+  const ok = run(s, { type: 'accept-in' }, { busy: false });
+  assert.deepEqual(has(ok.effects, 'join'), { join: ROOM });
 });
 
 test('an incoming challenge shows a prompt and starts a timer', () => {
