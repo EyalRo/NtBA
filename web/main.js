@@ -3,6 +3,7 @@
 
 import { SIGNALING_URL } from './config.js';
 import { ConnectError, PeerLink } from './net.js';
+import { nextScreen } from './flow.js';
 
 const BUTTONS = {
   UP: 1 << 0, DOWN: 1 << 1, LEFT: 1 << 2, RIGHT: 1 << 3,
@@ -46,14 +47,20 @@ const ui = {
   code: document.getElementById('join-code'),
   leave: document.getElementById('leave-btn'),
   text: document.getElementById('online-status'),
+  title: document.getElementById('menu'),
+  titleLocal: document.getElementById('menu-local'),
+  titleOnline: document.getElementById('menu-online'),
+  back: document.getElementById('menu-back'),
 };
 
 let held = 0;
+let screen = 'title'; // 'title' | 'local' | 'online' | 'match', see flow.js
 // Presses shorter than one tick (a quick tap between frames) must still register.
 let pending = 0;
 
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return; // typing a room code
+  if (screen !== 'local' && screen !== 'match') return; // title and lobby take no game input
   const bit = KEYMAP[e.code];
   if (bit === undefined) return;
   e.preventDefault();
@@ -82,9 +89,8 @@ async function main() {
   canvas.height = height;
   const image = ctx.createImageData(width, height);
 
-  wasm.ntba_init((Date.now() & 0xffffffff) >>> 0);
-  status.textContent = '';
-  canvas.focus();
+  const newSeed = () => (Date.now() & 0xffffffff) >>> 0;
+  wasm.ntba_init(newSeed());
 
   // ---- online play -------------------------------------------------------------------
   const NONE = 0xffffffff;
@@ -144,6 +150,7 @@ async function main() {
     setTimeout(() => l?.close(), 250);
     showMenu(message);
     status.textContent = '';
+    go('match-end');
   }
 
   function startOnline(role) {
@@ -158,6 +165,7 @@ async function main() {
         wasm.ntba_net_start(role === 'host' ? 0 : 1, seed, INPUT_DELAY_TICKS);
         wasm.ntba_net_set_open(1);
         online = true;
+        go('match-start');
         held = 0;
         pending = 0;
         showBusy('Connected - starting…');
@@ -199,8 +207,8 @@ async function main() {
     }
   }
 
-  if (SIGNALING_URL && typeof RTCPeerConnection !== 'undefined') {
-    ui.panel.hidden = false;
+  const canOnline = Boolean(SIGNALING_URL) && typeof RTCPeerConnection !== 'undefined';
+  if (canOnline) {
     ui.host.addEventListener('click', host);
     ui.form.addEventListener('submit', (e) => {
       e.preventDefault();
@@ -225,6 +233,44 @@ async function main() {
     });
     showMenu();
   }
+
+  // ---- screens -----------------------------------------------------------------------
+  function renderScreen() {
+    ui.title.hidden = screen !== 'title';
+    ui.titleOnline.hidden = !canOnline;
+    ui.back.hidden = screen !== 'local' && screen !== 'online';
+    ui.panel.hidden = !(canOnline && (screen === 'online' || screen === 'match'));
+    status.textContent = screen === 'title' ? 'Choose how to play' : '';
+  }
+
+  function go(event) {
+    screen = nextScreen(screen, event);
+    renderScreen();
+    if (screen === 'local' || screen === 'match') canvas.focus();
+  }
+
+  ui.titleLocal.addEventListener('click', () => {
+    wasm.ntba_init(newSeed()); // a fresh game; the idle demo behind the title is discarded
+    held = 0;
+    pending = 0;
+    go('local');
+  });
+  ui.titleOnline.addEventListener('click', () => go('online'));
+  ui.back.addEventListener('click', () => {
+    if (screen === 'local') {
+      wasm.ntba_init(newSeed());
+      held = 0;
+      pending = 0;
+    }
+    if (screen === 'online' && link) {
+      const l = link;
+      link = null;
+      l.close();
+    }
+    go('menu');
+    if (canOnline) showMenu('');
+  });
+  renderScreen();
 
   // ---- main loop ---------------------------------------------------------------------
   let last = performance.now();

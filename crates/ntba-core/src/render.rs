@@ -313,6 +313,7 @@ pub fn draw(g: &Game, fb: &mut Framebuffer) {
     draw_bottom_strip(fb);
     draw_scoreboard(g, fb);
     draw_overlays(g, fb);
+    draw_dev_badge(fb);
     fb.expand();
 }
 
@@ -1094,10 +1095,59 @@ fn draw_overlays(g: &Game, fb: &mut Framebuffer) {
     }
 }
 
+const DEV_LABEL: &str = "DEVELOPMENT VERSION";
+
+/// Where the "Development Version" plate sits: flush with the top-right corner.
+fn dev_badge_rect() -> (i32, i32, i32, i32) {
+    let w = text_width(DEV_LABEL, 1) + 6;
+    (SCREEN_W as i32 - w, 0, w, 9)
+}
+
+/// The plate itself, in the same amber lamps and bevelled steel as the other overlay plates.
+/// Drawn last so nothing covers it.
+fn draw_dev_badge(fb: &mut Framebuffer) {
+    let (x, y, w, h) = dev_badge_rect();
+    fb.rect(x, y, w, h, BLACK);
+    fb.bevel(x, y, w, h, STEEL[2], STEEL[0]);
+    fb.text(x + 3, y + 2, DEV_LABEL, LED, 1);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::input::{DOWN, LEFT, PASS, RIGHT, SHOOT, UP};
+
+    #[test]
+    fn dev_badge_is_drawn_in_the_top_right_corner() {
+        let g = Game::new(3);
+        let mut fb = Framebuffer::new();
+        draw(&g, &mut fb);
+        let (x0, y0, w, h) = dev_badge_rect();
+        let sw = SCREEN_W as i32;
+        assert_eq!(x0 + w, sw, "badge must be flush with the right edge");
+        assert_eq!(y0, 0, "badge must be flush with the top edge");
+        assert!(w <= 100 && h <= 12, "badge must stay a small corner plate");
+        let lit = (y0..y0 + h)
+            .flat_map(|y| (x0..x0 + w).map(move |x| (x, y)))
+            .filter(|&(x, y)| fb.idx[(y * sw + x) as usize] == LED)
+            .count();
+        assert!(lit >= 60, "badge text should light many pixels, got {lit}");
+    }
+
+    #[test]
+    fn dev_badge_is_still_drawn_on_the_final_screen() {
+        let mut g = Game::new(3);
+        g.phase = Phase::Final; // the overlay returns early; the badge must not
+        let mut fb = Framebuffer::new();
+        draw(&g, &mut fb);
+        let (x0, y0, w, h) = dev_badge_rect();
+        let sw = SCREEN_W as i32;
+        let lit = (y0..y0 + h)
+            .flat_map(|y| (x0..x0 + w).map(move |x| (x, y)))
+            .filter(|&(x, y)| fb.idx[(y * sw + x) as usize] == LED)
+            .count();
+        assert!(lit >= 60, "got {lit}");
+    }
 
     #[test]
     fn renders_every_state_inside_the_palette() {

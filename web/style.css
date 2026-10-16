@@ -75,6 +75,19 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 3p
 #online-status { margin: 0; min-height: 1.4em; color: var(--gold); text-align: center; max-width: 60em; }
 
 /* Narrow screens: box art becomes a compact banner above the game. */
+/* Title menu */
+.menu { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+.menu button, .menu-back {
+  font: inherit; font-size: 1.1rem; letter-spacing: .1em; text-transform: uppercase;
+  color: #fff; background: var(--panel); border: 3px solid var(--line); border-radius: 4px;
+  padding: 10px 24px; cursor: pointer; box-shadow: 0 4px 0 #000;
+}
+.menu button:hover, .menu button:focus-visible, .menu-back:hover, .menu-back:focus-visible {
+  border-color: var(--gold); color: var(--gold); outline: none;
+}
+.menu[hidden], .menu-back[hidden], .menu button[hidden] { display: none; }
+.menu-back { font-size: 14px; padding: 4px 12px; box-shadow: none; letter-spacing: 0; text-transform: none; }
+
 @media (max-width: 760px) {
   main { grid-template-columns: 1fr; }
   .box { position: static; width: min(55vw, 240px); }

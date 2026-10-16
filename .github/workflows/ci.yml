@@ -22,6 +22,8 @@ jobs:
         run: node scripts/check-determinism.mjs
       - name: Check the wasm online-play glue with two instances
         run: node scripts/test-net-wasm.mjs
+      - name: Test the web modules
+        run: node --test web/test/*.test.js
       - uses: actions/upload-artifact@v7
         with:
           name: web
