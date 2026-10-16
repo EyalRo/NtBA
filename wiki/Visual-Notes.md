@@ -133,3 +133,16 @@ is outside the simulation, so it never affects game state or hashes.
 
 None of this is required for the current milestone (single-player versus a bot); it is a
 backlog of presentation details that carry the "televised game" feel the project is after.
+
+## Title and menu screens
+
+From the three title and menu images at the end of [Reference Screenshots](Reference-Screenshots).
+We take ideas, not art.
+
+- **Title:** a single strong logotype with a short supporting line, over a simple dark or blurred
+  arena backdrop. Decoration is restrained: corner sparkles on one, a bevelled frame on the other.
+  A small credit line sits at the bottom.
+- **Idle behaviour:** the title is a *screen*, not a running game. The classic move is a short
+  self-playing demo after a pause, then back to the title.
+- **Menu:** a short vertical list of two to four chunky, high-contrast items on a plain textured
+  background, with one cursor (a ball) beside the selected item. Nothing else competes for attention.
