@@ -1,3 +1,4 @@
+import { Lobby } from './lobby.js';
 import { Room } from './room.js';
 import {
   STUN_URLS,
@@ -9,7 +10,7 @@ import {
   ttlSeconds,
 } from './logic.js';
 
-export { Room };
+export { Lobby, Room };
 
 const TURN_TTL_SECONDS = 3600;
 
@@ -127,6 +128,14 @@ export default {
       if (await limited(request, env, 'ice')) return json(request, env, { error: 'rate-limited' }, 429);
       const room = normaliseCode(url.searchParams.get('room'));
       return json(request, env, { iceServers: await iceServers(env, room) });
+    }
+
+    if (url.pathname === '/lobby/ws' && request.method === 'GET') {
+      if (request.headers.get('Upgrade') !== 'websocket') {
+        return json(request, env, { error: 'websocket-required' }, 426);
+      }
+      if (await limited(request, env, 'lobby')) return json(request, env, { error: 'rate-limited' }, 429);
+      return env.LOBBY.get(env.LOBBY.idFromName('main')).fetch(request);
     }
 
     const code = parseRoomWsPath(url.pathname);
