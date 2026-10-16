@@ -68,12 +68,25 @@
       <button type="button" id="leave-btn" hidden>Leave online match</button>
       <p id="online-status" role="status"></p>
     </section>
-    <p class="help">
-      Home (gold): <kbd>WASD</kbd> move &nbsp;·&nbsp; <kbd>Z</kbd> pass &nbsp;·&nbsp; <kbd>X</kbd> shoot &nbsp;·&nbsp; <kbd>C</kbd> switch<br>
-      Away (green): <kbd>←↑↓→</kbd> move &nbsp;·&nbsp; <kbd>J</kbd> pass &nbsp;·&nbsp; <kbd>K</kbd> shoot &nbsp;·&nbsp; <kbd>L</kbd> switch<br>
-      Online: you control one team (host = Home, guest = Away); <kbd>WASD</kbd> or <kbd>←↑↓→</kbd>, <kbd>Z</kbd>/<kbd>J</kbd> pass, <kbd>X</kbd>/<kbd>K</kbd> shoot, <kbd>C</kbd>/<kbd>L</kbd> switch<br>
-      On defence, run into the ball handler to steal, or press shoot to swipe or block &nbsp;·&nbsp; <kbd>Enter</kbd> restart after the final buzzer
-    </p>
+    <section class="help" aria-label="Controls">
+      <table class="controls">
+        <caption class="sr-only">Keyboard controls</caption>
+        <thead>
+          <tr><th scope="col"><span class="sr-only">Action</span></th><th scope="col" class="home">Home <small>gold</small></th><th scope="col" class="away">Away <small>green</small></th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Move</th><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></td></tr>
+          <tr><th scope="row">Pass</th><td><kbd>Z</kbd></td><td><kbd>J</kbd></td></tr>
+          <tr><th scope="row">Shoot</th><td><kbd>X</kbd></td><td><kbd>K</kbd></td></tr>
+          <tr><th scope="row">Switch</th><td><kbd>C</kbd></td><td><kbd>L</kbd></td></tr>
+        </tbody>
+      </table>
+      <ul class="tips">
+        <li><b>Online</b> you control one team (host = Home, guest = Away) and either key set works: <kbd>WASD</kbd> or <kbd>←↑↓→</kbd>, <kbd>Z</kbd>/<kbd>J</kbd> pass, <kbd>X</kbd>/<kbd>K</kbd> shoot, <kbd>C</kbd>/<kbd>L</kbd> switch.</li>
+        <li><b>Defence</b> run into the ball handler to steal, or press shoot to swipe or block.</li>
+        <li><b>Restart</b> press <kbd>Enter</kbd> after the final buzzer.</li>
+      </ul>
+    </section>
     <aside class="join">
       NtBA is an open-source project (GPL-3.0) and we'd love your help — code, pixel art, ideas and bug reports all welcome.
       <a href="https://github.com/EyalRo/NtBA" target="_blank" rel="noopener">Join us on GitHub &rarr;</a>
