@@ -48,9 +48,19 @@ canvas {
   box-shadow: 0 0 0 1px #000, 0 12px 32px #000a;
 }
 canvas:focus-visible { border-color: var(--gold); }
-.help { max-width: 60em; text-align: center; margin: 0; color: var(--muted); }
+.help { max-width: 60em; margin: 0; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+.controls { border-collapse: separate; border-spacing: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; overflow: hidden; text-align: center; }
+.controls th, .controls td { padding: 6px 18px; border-top: 1px solid var(--line); }
+.controls thead th { border-top: 0; color: #fff; }
+.controls thead th.home { background: rgba(248, 184, 24, .18); border-bottom: 2px solid var(--gold); }
+.controls thead th.away { background: rgba(60, 190, 90, .18); border-bottom: 2px solid #3cbe5a; }
+.controls small { display: block; font-weight: normal; color: var(--muted); }
+.controls tbody th { text-align: left; color: var(--muted); font-weight: normal; }
+.controls kbd + kbd { margin-left: 4px; }
+.tips { list-style: none; margin: 0; padding: 0; text-align: center; display: flex; flex-direction: column; gap: 4px; }
+.tips b { color: var(--text); margin-right: 4px; }
 #status { margin: 0; min-height: 1.4em; color: var(--gold); }
-kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 0 5px; color: #fff; }
+kbd { background: var(--panel); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 3px; padding: 0 6px; color: #fff; }
 .join {
   max-width: 60em; text-align: center; padding: 10px 16px;
   border: 1px solid var(--line); border-left: 4px solid var(--orange); border-radius: 4px; background: var(--panel);
