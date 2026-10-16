@@ -104,3 +104,5 @@ is `SIGNALING_URL` in `web/config.js`. Deploying needs the `LOBBY` binding and t
 `wrangler.toml`; `npm run deploy` applies them.
 
 Logs are one JSON object per line with a `level` of `DEBUG`, `INFO`, `WARN` or `ERROR`.
+`wrangler.toml` turns on Workers observability, so these lines are kept and can be searched under
+Workers Logs in the Cloudflare dashboard once the Worker has been deployed with that setting.
