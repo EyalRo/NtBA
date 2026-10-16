@@ -7,7 +7,7 @@ class FakeSocket {
   constructor() {
     this.sent = [];
     this.closed = null;
-    this.attachment = { joined: false, windowStart: Date.now(), count: 0 };
+    this.attachment = { joined: false, windowStart: Date.now(), count: 0, created: Date.now() };
   }
   send(text) {
     if (this.closed) throw new Error('socket closed');
@@ -155,4 +155,39 @@ test('malformed messages get an error and the socket stays open', async () => {
   await lobby.webSocketMessage(a, '{nope');
   assert.deepEqual(a.sent.at(-1), { type: 'error', reason: 'invalid-json' });
   assert.equal(a.closed, null);
+});
+
+// ---- admission (the part of fetch() that needs no WebSocketPair) ----
+
+const idle = (ageMs) => {
+  const ws = new FakeSocket();
+  ws.attachment.created = Date.now() - ageMs;
+  ctx.acceptWebSocket(ws);
+  return ws;
+};
+
+test('admit lets a socket in below twice the player cap', () => {
+  for (let i = 0; i < MAX_PLAYERS * 2 - 1; i++) idle(0);
+  assert.deepEqual(lobby.admit(), { ok: true });
+});
+
+test('admit refuses with 503 at twice the player cap', () => {
+  for (let i = 0; i < MAX_PLAYERS * 2; i++) idle(0);
+  assert.deepEqual(lobby.admit(), { ok: false, status: 503 });
+});
+
+test('admit closes unjoined sockets older than 10 seconds and then has room', () => {
+  const stale = [];
+  for (let i = 0; i < MAX_PLAYERS * 2; i++) stale.push(idle(11_000));
+  assert.deepEqual(lobby.admit(), { ok: true });
+  for (const ws of stale) assert.deepEqual(ws.closed, { code: 1008, reason: 'hello timeout' });
+});
+
+test('admit never closes fresh unjoined sockets or joined players', async () => {
+  const fresh = idle(9_000);
+  const joined = await connect(idOf(1), 'Ann');
+  joined.attachment.created = Date.now() - 60_000; // joined long ago
+  assert.deepEqual(lobby.admit(), { ok: true });
+  assert.equal(fresh.closed, null);
+  assert.equal(joined.closed, null);
 });

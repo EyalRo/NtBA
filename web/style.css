@@ -99,6 +99,8 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 3p
 .lobby button:disabled { opacity: .45; cursor: default; border-color: var(--line); }
 #nick-form[hidden], #roster[hidden], #chat-log[hidden], #chat-form[hidden], #lobby-state[hidden] { display: none; }
 #nick-form { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+#lobby-retry { display: block; margin: 0 auto; }
+#lobby-retry[hidden] { display: none; }
 #lobby-state { margin: 0; min-height: 1.4em; color: var(--gold); text-align: center; }
 .lobby-grid { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 12px; }
 #roster, #chat-log { list-style: none; margin: 0; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
@@ -118,6 +120,13 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 3p
 #chat-form { display: flex; gap: 8px; }
 #chat-input { flex: 1; min-width: 0; unicode-bidi: plaintext; }
 .lobby-note, .lobby-or { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
+
+.challenge-box {
+  display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;
+  padding: 8px 12px; border: 1px solid var(--gold); border-left: 4px solid var(--gold); border-radius: 4px; background: var(--panel);
+}
+.challenge-box p { margin: 0; color: #fff; }
+.lobby .challenge-box[hidden] { display: none; }
 
 @media (max-width: 760px) {
   .lobby-grid { grid-template-columns: 1fr; }

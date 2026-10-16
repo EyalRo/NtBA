@@ -4,8 +4,8 @@
 crates/ntba-core   platform-independent game: simulation + software renderer (no deps)
 crates/ntba-net    online play: wire protocol, transport trait, lock-step session (no deps but ntba-core)
 crates/ntba-wasm   cdylib exposing ntba-core and ntba-net through a plain C ABI
-web/               static host page: canvas, keyboard, fixed-timestep loop, WebRTC (net.js)
-signaling/         Cloudflare Worker + Durable Object for online matchmaking (see Online Play)
+web/               static host page: title menu, canvas, keyboard, fixed-timestep loop, WebRTC, lobby
+signaling/         Cloudflare Worker + Durable Objects (rooms, lobby) for online play (see Online Play)
 scripts/           build-web.sh, serve.sh, determinism and wasm net checks
 ```
 
@@ -28,6 +28,27 @@ canvas  ◀─ RGBA bytes ◀── ntba_framebuffer() ◀ ntba_render() ◀ ren
 Online play reuses the same loop: instead of `ntba_step`, the host calls `ntba_net_step`, which
 runs a lock-step session (`crates/ntba-net`) that exchanges input bytes with the other peer over
 WebRTC. See [Online Play](Online-Play).
+
+## Web modules
+
+| Module | Role |
+| --- | --- |
+| `main.js` | Page wiring, keyboard, the fixed-timestep loop (local or lock-step), the wasm glue. |
+| `flow.js` | Pure screen state machine: title, local, online, match. |
+| `net.js` | Room signalling and the match `RTCPeerConnection` (two data channels). |
+| `lobby.js` | Lobby client: presence socket, WebRTC mesh to the other players, chat and challenge messages. |
+| `lobby-protocol.js` | Pure helpers: name and chat cleaning, peer-message validation, the offer rule, rate limiter, id generation. |
+| `challenge.js` | Pure challenge reducer (state and effects). |
+| `chat.js`, `lobby-ui.js` | Chat log and player list; text is inserted as text, never HTML. |
+
+The pure modules (`flow`, `lobby-protocol`, `challenge`, and the lobby client with fake peers) have
+Node tests in `web/test`, run with `node --test web/test/*.test.js`.
+
+## Development Version badge
+
+The last thing `render::draw` does is draw a small "DEVELOPMENT VERSION" plate flush with the
+top-right corner of the framebuffer. It uses the game's own font and palette and is purely a
+rendering overlay, outside the simulation, so it never affects game state or hashes.
 
 ## Period constraints
 

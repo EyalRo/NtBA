@@ -35,12 +35,18 @@
       </form>
       <div id="lobby-main" hidden>
         <p id="lobby-state" role="status"></p>
+        <button type="button" id="lobby-retry" hidden>Retry</button>
+        <div id="challenge-box" class="challenge-box" role="alertdialog" aria-labelledby="challenge-text" hidden>
+          <p id="challenge-text"></p>
+          <button type="button" id="challenge-accept">Accept</button>
+          <button type="button" id="challenge-decline">Decline</button>
+        </div>
         <div class="lobby-grid">
           <ul id="roster" aria-label="Players online"></ul>
           <div class="chat">
             <ol id="chat-log" aria-live="polite"></ol>
             <form id="chat-form" autocomplete="off">
-              <input id="chat-input" maxlength="600" dir="auto" placeholder="Say something… / כתבו משהו…" aria-label="Chat message">
+              <input id="chat-input" maxlength="500" dir="auto" placeholder="Say something… / כתבו משהו…" aria-label="Chat message">
               <button type="submit">Send</button>
             </form>
           </div>

@@ -33,6 +33,7 @@ test('cleanChat strips bidi overrides and control characters, and rejects empty 
   assert.equal(cleanChat('a\u0000b\u0007c'), 'abc');
   assert.equal(cleanChat('   '), null);
   assert.equal(cleanChat('\u202E\u202E'), null);
+  assert.equal(cleanChat('a\u061Cb'), 'ab'); // Arabic letter mark
   assert.equal(cleanChat(42), null);
 });
 
@@ -46,6 +47,7 @@ test('the client and server agree on which nicknames are acceptable', () => {
   const samples = [
     'Dana', '  דנה ', '', ' ', 'x'.repeat(20), 'x'.repeat(21), '🏀🏀', 'a\u0000', 'a\u202Eb', 'a\u2067b', 'a  b', '\t',
     ' a\n ', 'a\tb', 'a\u007fb', '\u202Eabc',
+    'a\u061Cb', 'a\u200Db', 'a\u200Cb',
   ];
   for (const s of samples) assert.equal(cleanNick(s), serverCleanNick(s), JSON.stringify(s));
 });

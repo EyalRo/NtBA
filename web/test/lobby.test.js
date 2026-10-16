@@ -84,12 +84,12 @@ function make() {
   FakePC.all = [];
   timers = [];
   ids = [ME, 'NNNNNNNNNNNN', 'OOOOOOOOOOOO'];
-  events = { rosters: [], chats: [], states: [], peerMessages: [], left: [] };
+  events = { rosters: [], chats: [], states: [], stateObjs: [], peerMessages: [], left: [] };
   lobby = new Lobby(
     'https://signal.example',
     'Dana',
     {
-      onState: (s) => events.states.push(s.phase),
+      onState: (s) => (events.states.push(s.phase), events.stateObjs.push(s)),
       onRoster: (r) => events.rosters.push(r),
       onChat: (c) => events.chats.push(c),
       onPeerMessage: (id, m) => events.peerMessages.push([id, m]),
@@ -323,4 +323,70 @@ test('retryNow after a full reply reconnects, but full alone never does', async 
   FakeWS.all[1].push(welcome(LOW));
   await tick();
   assert.equal(events.states.at(-1), 'online');
+});
+
+test('a reconnect during a match re-sends the in-match status after the welcome', async () => {
+  const first = FakeWS.all[0];
+  first.push(welcome());
+  await tick();
+  lobby.setStatus('in-match');
+  first.close();
+  timers.find((t) => t.ms === 1000).fn();
+  const second = FakeWS.all[1];
+  second.onopen();
+  assert.deepEqual(second.sent.map((m) => m.type), ['hello']);
+  second.push({ ...welcome(), you: { id: 'NNNNNNNNNNNN', nick: 'Dana', status: 'lobby' } });
+  assert.deepEqual(second.sent.at(-1), { type: 'status', status: 'in-match' });
+});
+
+test('a plain lobby player sends no status after the welcome', async () => {
+  FakeWS.all[0].push(welcome());
+  await tick();
+  assert.deepEqual(FakeWS.all[0].sent.map((m) => m.type), ['hello']);
+});
+
+test('retryNow with an old socket still around tears down its peers and tells the page', async () => {
+  const first = FakeWS.all[0];
+  first.push(welcome(LOW, HIGH));
+  await tick();
+  const pcs = [...FakePC.all];
+  const closed = [];
+  for (const pc of pcs) pc.close = () => closed.push(pc);
+  first.readyState = 2; // closing: not open, but its close event has not arrived yet
+  lobby.retryNow();
+  assert.equal(FakeWS.all.length, 2);
+  assert.equal(closed.length, 2);
+  assert.deepEqual([...events.left].sort(), [LOW, HIGH].sort());
+  assert.equal(lastRoster().length, 1); // only me
+  assert.equal(lobby.peers.size, 0);
+  // The dead channels deliver nothing.
+  pcs[0].dc.onmessage?.({ data: JSON.stringify({ type: 'chat', text: 'ghost' }) });
+  assert.equal(events.chats.length, 0);
+});
+
+test('reconnecting says whether the lobby was ever reached', async () => {
+  const first = FakeWS.all[0];
+  first.close(); // never welcomed
+  assert.deepEqual(events.stateObjs.at(-1), { phase: 'reconnecting', everConnected: false });
+  timers.find((t) => t.ms === 1000).fn();
+  const second = FakeWS.all[1];
+  second.onopen();
+  second.push(welcome(LOW));
+  await tick();
+  second.close();
+  assert.deepEqual(events.stateObjs.at(-1), { phase: 'reconnecting', everConnected: true });
+});
+
+test('a muted player cannot prompt a challenge: it is declined over the channel', async () => {
+  FakeWS.all[0].push(welcome(LOW));
+  await tick();
+  const dc = FakePC.all[0].dc;
+  dc.open();
+  lobby.mute(LOW, true);
+  dc.onmessage({ data: JSON.stringify({ type: 'challenge', room: 'K7M2QX' }) });
+  assert.equal(events.peerMessages.length, 0);
+  assert.deepEqual(dc.sent.at(-1), { type: 'decline' });
+  lobby.mute(LOW, false);
+  dc.onmessage({ data: JSON.stringify({ type: 'challenge', room: 'K7M2QX' }) });
+  assert.deepEqual(events.peerMessages.at(-1), [LOW, { type: 'challenge', room: 'K7M2QX' }]);
 });

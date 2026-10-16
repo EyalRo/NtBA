@@ -13,8 +13,8 @@ under the arena lights, and sink one while the pixel crowd goes wild.
 
 - 🏀 **Two players, one keyboard**: five-on-five, each of you steers one player and the AI runs the
   other four, against the shot clock and the game clock
-- 🌐 **Two players, two computers**: host an online game and send your friend the code (see
-  [Online Play](Online-Play))
+- 🌐 **Two players, two computers**: meet in the online lobby, chat and challenge someone, or send
+  a friend a room code (see [Online Play](Online-Play))
 - 🛡️ **Real defence**: run into the ball handler to strip the ball, swipe for steals, block shots,
   jump passing lanes
 - 🎥 **Two camera angles**: a sideline view for the break, and an end-on view when you attack the hoop
@@ -39,12 +39,33 @@ On defence, run into the ball handler to steal the ball. Lost your player off sc
 your shirt colour on the edge of the screen points the way. Click the game if the keys don't
 respond.
 
+## Title menu
+
+The page opens on a title screen over an idle demo with two buttons: **Local game** (a fresh local
+game with two pads; the **Main menu** button takes you back) and **Online**. Online is hidden when
+online play is not configured or your browser has no WebRTC.
+
 ## Playing online
 
-1. One of you presses **Host an online game** and gets a 6-character code.
-2. The other types it into **Join with code** and presses **Join**.
-3. The host plays Home (gold) and the guest plays Away (green). Both of you can use either key set
-   (WASD or the arrow keys) for your own player.
+**Online** opens the lobby.
+
+1. Pick a name (1 to 20 characters; letters, digits, Hebrew and emoji are fine). It is remembered
+   in your browser. Others see you as `name#ABC`, where the suffix comes from a random id that
+   changes every time you connect.
+2. The lobby lists everyone online (up to 16), whether they are in the lobby or in a match, and
+   whether you are connected to them. Other players in the lobby can see your IP address; that is
+   how peer-to-peer works.
+3. **Chat** with everyone in the lobby. Hebrew and English both work, and each line aligns to its
+   own language. Messages are up to 500 characters, nothing is saved, and each player has a **Mute**
+   button.
+4. Press **Challenge** next to a connected player who is in the lobby. They have 30 seconds to
+   **Accept** or **Decline**. A player who is in a match cannot be challenged.
+5. The challenger plays Home (gold) and the challenged player plays Away (green). Both of you can use
+   either key set (WASD or the arrow keys) for your own player.
+
+**With a room code instead:** one of you presses **Host an online game** and gets a 6-character code
+(valid for 10 minutes); the other types it into **Join with code** and presses **Join**. The host
+plays Home and the guest plays Away.
 
 If the page says it couldn't connect directly, some networks block peer-to-peer connections: try
 again or try another network. How it works: [Online Play](Online-Play).

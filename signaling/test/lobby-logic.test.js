@@ -30,6 +30,7 @@ test('cleanNick rejects control and bidi override characters and non-strings', (
   assert.equal(cleanNick('a\tb'), null);
   assert.equal(cleanNick('a\u007fb'), null); // DEL
   assert.equal(cleanNick('\u202eabc'), null); // leading right-to-left override
+  assert.equal(cleanNick('a\u061cb'), null); // Arabic letter mark
   assert.equal(cleanNick(42), null);
   assert.equal(cleanNick(undefined), null);
 });

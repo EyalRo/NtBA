@@ -4,6 +4,8 @@ import { log } from './logic.js';
 // One global Durable Object: who is online, and a relay for the WebRTC handshakes between them.
 // It keeps nothing but the roster, held in each socket's attachment so it survives hibernation,
 // and it never sees chat: players talk to each other directly.
+const HELLO_DEADLINE_MS = 10_000;
+
 export class Lobby {
   constructor(ctx) {
     this.ctx = ctx;
@@ -13,11 +15,29 @@ export class Lobby {
     if (request.headers.get('Upgrade') !== 'websocket') {
       return new Response('expected a WebSocket upgrade', { status: 426 });
     }
+    const admission = this.admit();
+    if (!admission.ok) return new Response('lobby busy', { status: admission.status });
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
-    server.serializeAttachment({ joined: false, windowStart: Date.now(), count: 0 });
+    const now = Date.now();
+    server.serializeAttachment({ joined: false, windowStart: now, count: 0, created: now });
     return new Response(null, { status: 101, webSocket: client });
+  }
+
+  /** Decide whether one more socket may connect: first close idle sockets that never said hello,
+   *  then refuse if twice the player cap are still connected. */
+  admit(now = Date.now()) {
+    const sockets = this.ctx.getWebSockets();
+    let open = sockets.length;
+    for (const ws of sockets) {
+      const att = ws.deserializeAttachment();
+      if (att && att.joined === false && now - att.created > HELLO_DEADLINE_MS) {
+        ws.close(1008, 'hello timeout');
+        open -= 1;
+      }
+    }
+    return open >= MAX_PLAYERS * 2 ? { ok: false, status: 503 } : { ok: true };
   }
 
   roster() {

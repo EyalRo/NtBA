@@ -9,7 +9,7 @@ const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456
 
 // Control characters, plus the bidi override and isolate characters that can disguise text.
 // Hebrew and English letters are untouched.
-const BAD_CHARS = /[\u0000-\u001f\u007f-\u009f\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
+const BAD_CHARS = /[\u0000-\u001f\u007f-\u009f\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/;
 const BAD_CHARS_G = new RegExp(BAD_CHARS.source, 'g');
 
 /** Same rules as signaling/src/lobby-logic.js `cleanNick`; a test keeps the two in step. */

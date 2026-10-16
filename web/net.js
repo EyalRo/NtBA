@@ -34,16 +34,20 @@ export class PeerLink {
 
   async host() {
     const res = await fetch(`${this.base}/rooms`, { method: 'POST' });
+    if (this.closed) return; // cancelled while the room was being created
     if (res.status === 429) throw new ConnectError('Too many tries - wait a minute and try again.');
     if (!res.ok) throw new ConnectError('Could not create a room (signalling service unavailable).');
     const { code } = await res.json();
+    if (this.closed) return;
     this.h.onCode?.(code);
     await this.#connect('host', code);
+    if (this.closed) return;
     this.h.onStatus?.(`Room ${code} - waiting for the other player…`);
   }
 
   async join(code) {
     await this.#connect('guest', code);
+    if (this.closed) return;
     this.h.onStatus?.('Joining…');
   }
 
@@ -57,6 +61,7 @@ export class PeerLink {
     } catch (err) {
       console.warn('[ntba-net] ICE server lookup failed, using public STUN only', err);
     }
+    if (this.closed) return; // cancelled meanwhile: create nothing
 
     const pc = (this.pc = new RTCPeerConnection({ iceServers }));
     this.reliable = pc.createDataChannel('reliable', { negotiated: true, id: 0, ordered: true });
@@ -77,10 +82,19 @@ export class PeerLink {
     const ws = (this.ws = new WebSocket(`${this.base.replace(/^http/, 'ws')}/rooms/${code}/ws?role=${role}`));
     ws.onmessage = (e) => this.#onSignal(JSON.parse(e.data)).catch((err) => this.#fail(`Connection setup failed: ${err.message}`));
     // Failing to open at all is reported by the rejection below; these cover later loss.
-    await new Promise((resolve, reject) => {
-      ws.addEventListener('open', resolve, { once: true });
-      ws.addEventListener('error', () => reject(new ConnectError(NO_SIGNALING)), { once: true });
-    });
+    try {
+      await new Promise((resolve, reject) => {
+        ws.addEventListener('open', resolve, { once: true });
+        ws.addEventListener('error', () => reject(new ConnectError(NO_SIGNALING)), { once: true });
+      });
+    } catch (err) {
+      if (this.closed) return; // closed by the caller: not an error
+      throw err;
+    }
+    if (this.closed) {
+      this.close(); // closed while connecting: tear down what was created meanwhile
+      return;
+    }
     ws.onerror = () => {
       if (!this.open) this.#fail(NO_SIGNALING);
     };

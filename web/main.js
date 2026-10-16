@@ -7,6 +7,7 @@ import { nextScreen } from './flow.js';
 import { ChatView } from './chat.js';
 import { Lobby } from './lobby.js';
 import { renderRoster } from './lobby-ui.js';
+import { CHALLENGE_TIMEOUT_MS, initialChallenges, reduce } from './challenge.js';
 import { cleanNick } from './lobby-protocol.js';
 
 const BUTTONS = {
@@ -60,10 +61,15 @@ const ui = {
   nickInput: document.getElementById('nick-input'),
   lobbyMain: document.getElementById('lobby-main'),
   lobbyState: document.getElementById('lobby-state'),
+  lobbyRetry: document.getElementById('lobby-retry'),
   roster: document.getElementById('roster'),
   chatLog: document.getElementById('chat-log'),
   chatForm: document.getElementById('chat-form'),
   chatInput: document.getElementById('chat-input'),
+  challengeBox: document.getElementById('challenge-box'),
+  challengeText: document.getElementById('challenge-text'),
+  challengeAccept: document.getElementById('challenge-accept'),
+  challengeDecline: document.getElementById('challenge-decline'),
 };
 
 let held = 0;
@@ -158,6 +164,7 @@ async function main() {
     const l = link;
     link = null;
     online = false;
+    abandonChallenge(); // no-op after a match (match-started cleared it); else resets a failed challenge
     wasm.ntba_net_discard();
     // Give the Bye a moment to leave before tearing the connection down.
     setTimeout(() => l?.close(), 250);
@@ -165,14 +172,23 @@ async function main() {
     status.textContent = '';
     go('match-end');
     lobby?.setStatus('lobby');
+    drawRoster();
   }
 
-  function startOnline(role) {
+  function startOnline(role, onRoom) {
     if (!SIGNALING_URL) return;
     ui.host.disabled = true;
     ui.form.querySelector('button').disabled = true;
+    if (link) { // never leave a second link feeding the one session
+      const old = link;
+      link = null;
+      old.close();
+    }
     link = new PeerLink(SIGNALING_URL, {
-      onCode: (code) => say(`Room code: ${code} - share it with the other player.`),
+      onCode: (code) => {
+        say(`Room code: ${code} - share it with the other player.`);
+        onRoom?.(code);
+      },
       onStatus: say,
       onOpen: () => {
         const seed = role === 'host' ? crypto.getRandomValues(new Uint32Array(1))[0] : 0;
@@ -181,6 +197,7 @@ async function main() {
         online = true;
         go('match-start');
         lobby?.setStatus('in-match');
+        dispatch({ type: 'match-started' });
         held = 0;
         pending = 0;
         showBusy('Connected - starting…');
@@ -195,6 +212,7 @@ async function main() {
         if (!online) endOnline(reason);
       },
     });
+    drawRoster(); // challenge buttons and Accept follow the busy state
     return link;
   }
 
@@ -207,6 +225,7 @@ async function main() {
       link?.close();
       link = null;
       showMenu(message);
+      drawRoster();
     }
   }
 
@@ -219,6 +238,7 @@ async function main() {
       link?.close();
       link = null;
       showMenu(message);
+      drawRoster();
     }
   }
 
@@ -240,10 +260,12 @@ async function main() {
         drainNet();
         endOnline(END_TEXT[2]);
       } else {
+        abandonChallenge(); // before closing: it may need to cancel the pending challenge
         const l = link;
         link = null;
         l?.close();
         showMenu('');
+        drawRoster();
       }
     });
     showMenu();
@@ -254,6 +276,7 @@ async function main() {
   const LOBBY_TEXT = {
     connecting: 'Connecting to the lobby\u2026',
     online: 'In the lobby - chat is peer to peer.',
+    unreachable: "Can't reach the lobby. Retrying\u2026 (the room code below still works)",
     reconnecting: "Lost the lobby connection - retrying\u2026 (the room code below still works)",
     full: 'The lobby is full (16 players). Try again soon, or play with a room code below.',
   };
@@ -267,22 +290,130 @@ async function main() {
     try { localStorage.setItem(NICK_KEY, nick); } catch { /* private mode: not remembered */ }
   }
 
+  // ---- challenges (rules live in challenge.js) ---------------------------------------
+  const CHALLENGE_TEXT = {
+    busy: "You can't challenge right now - finish what you are doing first.",
+    accepted: 'Challenge accepted - connecting\u2026',
+    declined: 'They declined the challenge.',
+    'no-answer': 'No answer to your challenge.',
+    simultaneous: 'You both challenged each other at once - try again.',
+    'hosting-failed': "Couldn't set up the match - try again.",
+    'no-connect': "They didn't connect - try again.",
+  };
+  let challenges = initialChallenges();
+  const challengeTimers = { out: null, inc: null };
+  let lastPlayers = [];
+  const names = () => new Map(lastPlayers.map((p) => [p.id, p.name]));
+  const isBusy = () => screen === 'match' || link !== null;
+
+  function drawRoster() {
+    renderRoster(ui.roster, lastPlayers, {
+      onMute: (id, on) => lobby?.mute(id, on),
+      onChallenge: (id) => dispatch({ type: 'start', to: id }),
+      busy: isBusy,
+    });
+    ui.challengeAccept.disabled = isBusy(); // the reducer also refuses a busy accept
+  }
+
+  function dispatch(ev) {
+    const result = reduce(challenges, ev, { busy: isBusy() });
+    challenges = result.state;
+    for (const fx of result.effects) runEffect(fx);
+    drawRoster();
+  }
+
+  function runEffect(fx) {
+    if (fx.send) lobby?.sendTo(fx.send.to, fx.send.msg);
+    if (fx.host) hostForChallenge();
+    if (fx.cancelHost && !online) {
+      const l = link;
+      link = null;
+      l?.close();
+      showMenu('');
+    }
+    if (fx.join) join(fx.join);
+    if (fx.prompt) {
+      // The name sits in its own <bdi> so a Hebrew name cannot reorder the rest of the sentence.
+      const who = document.createElement('bdi');
+      who.textContent = names().get(fx.prompt.from) ?? 'Someone';
+      ui.challengeText.replaceChildren(who, document.createTextNode(' challenges you to a match.'));
+      ui.challengeBox.hidden = false;
+    }
+    if (fx.closePrompt) {
+      ui.challengeBox.hidden = true;
+      ui.challengeText.replaceChildren();
+    }
+    if (fx.notify) ui.lobbyState.textContent = CHALLENGE_TEXT[fx.notify] ?? '';
+    if (fx.clearTimer) clearTimeout(challengeTimers[fx.clearTimer]);
+    if (fx.timer) {
+      clearTimeout(challengeTimers[fx.timer]);
+      challengeTimers[fx.timer] = setTimeout(() => dispatch({ type: 'timeout', which: fx.timer }), CHALLENGE_TIMEOUT_MS);
+    }
+  }
+
+  // Drop our outgoing challenge (Leave, or the link failed): tell the target if they saw it.
+  function abandonChallenge() {
+    const out = challenges.out;
+    if (!out) return;
+    if (out.phase === 'sent' || out.phase === 'accepted') lobby?.sendTo(out.to, { type: 'cancel' });
+    dispatch({ type: 'abandon' });
+  }
+
+  async function hostForChallenge() {
+    showBusy('Challenging\u2026');
+    const l = startOnline('host', (room) => {
+      if (link === l) dispatch({ type: 'room', room });
+      else l?.close();
+    });
+    try {
+      await l?.host();
+    } catch (err) {
+      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
+        l?.close();
+        return;
+      }
+      link?.close();
+      link = null;
+      showMenu(err instanceof ConnectError ? err.message : `Could not start an online game: ${err.message}`);
+      dispatch({ type: 'hosting-failed' });
+    }
+  }
+
+  ui.challengeAccept.addEventListener('click', () => dispatch({ type: 'accept-in' }));
+  ui.lobbyRetry.addEventListener('click', () => lobby?.retryNow());
+  ui.challengeDecline.addEventListener('click', () => dispatch({ type: 'decline-in' }));
+
   function enterLobby(nick) {
     if (lobby) return;
     ui.nickForm.hidden = true;
     ui.lobbyMain.hidden = false;
     lobby = new Lobby(SIGNALING_URL, nick, {
-      onState: ({ phase }) => { ui.lobbyState.textContent = LOBBY_TEXT[phase] ?? ''; },
-      onRoster: (players) => renderRoster(ui.roster, players, { onMute: (id, on) => lobby?.mute(id, on) }),
+      onState: ({ phase, everConnected }) => {
+        const key = phase === 'reconnecting' && !everConnected ? 'unreachable' : phase;
+        ui.lobbyState.textContent = LOBBY_TEXT[key] ?? '';
+        ui.lobbyRetry.hidden = phase !== 'reconnecting' && phase !== 'full';
+      },
+      onRoster: (players) => {
+        lastPlayers = players;
+        drawRoster();
+      },
+      onPeerMessage: (from, msg) => dispatch({ type: 'msg', from, msg }),
+      onPeerLeft: (id) => dispatch({ type: 'peer-left', id }),
       onChat: (m) => chat.add({ name: m.from.name, text: m.text, mine: m.mine }),
     });
     lobby.connect();
   }
 
   function leaveLobby() {
+    challenges = initialChallenges();
+    ui.challengeBox.hidden = true;
+    ui.lobbyRetry.hidden = true;
+    clearTimeout(challengeTimers.out);
+    clearTimeout(challengeTimers.inc);
     lobby?.close();
     lobby = null;
     ui.roster.replaceChildren();
+    lastPlayers = [];
     ui.chatLog.replaceChildren();
     ui.lobbyMain.hidden = true;
     ui.nickForm.hidden = false;
