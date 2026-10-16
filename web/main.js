@@ -4,6 +4,10 @@
 import { SIGNALING_URL } from './config.js';
 import { ConnectError, PeerLink } from './net.js';
 import { nextScreen } from './flow.js';
+import { ChatView } from './chat.js';
+import { Lobby } from './lobby.js';
+import { renderRoster } from './lobby-ui.js';
+import { cleanNick } from './lobby-protocol.js';
 
 const BUTTONS = {
   UP: 1 << 0, DOWN: 1 << 1, LEFT: 1 << 2, RIGHT: 1 << 3,
@@ -51,6 +55,15 @@ const ui = {
   titleLocal: document.getElementById('menu-local'),
   titleOnline: document.getElementById('menu-online'),
   back: document.getElementById('menu-back'),
+  lobby: document.getElementById('lobby'),
+  nickForm: document.getElementById('nick-form'),
+  nickInput: document.getElementById('nick-input'),
+  lobbyMain: document.getElementById('lobby-main'),
+  lobbyState: document.getElementById('lobby-state'),
+  roster: document.getElementById('roster'),
+  chatLog: document.getElementById('chat-log'),
+  chatForm: document.getElementById('chat-form'),
+  chatInput: document.getElementById('chat-input'),
 };
 
 let held = 0;
@@ -151,6 +164,7 @@ async function main() {
     showMenu(message);
     status.textContent = '';
     go('match-end');
+    lobby?.setStatus('lobby');
   }
 
   function startOnline(role) {
@@ -166,6 +180,7 @@ async function main() {
         wasm.ntba_net_set_open(1);
         online = true;
         go('match-start');
+        lobby?.setStatus('in-match');
         held = 0;
         pending = 0;
         showBusy('Connected - starting…');
@@ -234,11 +249,71 @@ async function main() {
     showMenu();
   }
 
+  // ---- lobby -------------------------------------------------------------------------
+  const NICK_KEY = 'ntba.nick';
+  const LOBBY_TEXT = {
+    connecting: 'Connecting to the lobby\u2026',
+    online: 'In the lobby - chat is peer to peer.',
+    reconnecting: "Lost the lobby connection - retrying\u2026 (the room code below still works)",
+    full: 'The lobby is full (16 players). Try again soon, or play with a room code below.',
+  };
+  const chat = new ChatView(ui.chatLog);
+  let lobby = null;
+
+  function savedNick() {
+    try { return localStorage.getItem(NICK_KEY) ?? ''; } catch { return ''; }
+  }
+  function saveNick(nick) {
+    try { localStorage.setItem(NICK_KEY, nick); } catch { /* private mode: not remembered */ }
+  }
+
+  function enterLobby(nick) {
+    ui.nickForm.hidden = true;
+    ui.lobbyMain.hidden = false;
+    lobby = new Lobby(SIGNALING_URL, nick, {
+      onState: ({ phase }) => { ui.lobbyState.textContent = LOBBY_TEXT[phase] ?? ''; },
+      onRoster: (players) => renderRoster(ui.roster, players, { onMute: (id, on) => lobby?.mute(id, on) }),
+      onChat: (m) => chat.add({ name: m.from.name, text: m.text, mine: m.mine }),
+    });
+    lobby.connect();
+  }
+
+  function leaveLobby() {
+    lobby?.close();
+    lobby = null;
+    ui.roster.replaceChildren();
+    ui.chatLog.replaceChildren();
+    ui.lobbyMain.hidden = true;
+    ui.nickForm.hidden = false;
+  }
+
+  if (canOnline) {
+    ui.nickInput.value = savedNick();
+    ui.nickForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const nick = cleanNick(ui.nickInput.value);
+      if (nick === null) {
+        say('Pick a name of 1 to 20 characters (letters, digits, Hebrew and emoji are fine).');
+        return;
+      }
+      say('');
+      saveNick(nick);
+      enterLobby(nick);
+    });
+    ui.chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const result = lobby?.chat(ui.chatInput.value);
+      if (result === 'ok') ui.chatInput.value = '';
+      else if (result === 'rate') chat.add({ text: 'Slow down a little - two messages a second at most.', system: true });
+    });
+  }
+
   // ---- screens -----------------------------------------------------------------------
   function renderScreen() {
     ui.title.hidden = screen !== 'title';
     ui.titleOnline.hidden = !canOnline;
     ui.back.hidden = screen !== 'local' && screen !== 'online';
+    ui.lobby.hidden = !(canOnline && screen === 'online');
     ui.panel.hidden = !(canOnline && (screen === 'online' || screen === 'match'));
     status.textContent = screen === 'title' ? 'Choose how to play' : '';
   }
@@ -267,6 +342,7 @@ async function main() {
       link = null;
       l.close();
     }
+    if (screen === 'online') leaveLobby();
     go('menu');
     if (canOnline) showMenu('');
   });

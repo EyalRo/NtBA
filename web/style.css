@@ -88,7 +88,38 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 3p
 .menu[hidden], .menu-back[hidden], .menu button[hidden] { display: none; }
 .menu-back { font-size: 14px; padding: 4px 12px; box-shadow: none; letter-spacing: 0; text-transform: none; }
 
+/* Lobby */
+.lobby { width: 100%; max-width: 60em; display: flex; flex-direction: column; gap: 10px; }
+.lobby[hidden], .lobby [hidden] { display: none; }
+.lobby input, .lobby button {
+  font: inherit; color: #fff; background: var(--panel); border: 1px solid var(--line); border-radius: 3px; padding: 4px 8px;
+}
+.lobby button { cursor: pointer; padding: 4px 12px; }
+.lobby button:hover, .lobby button:focus-visible, .lobby input:focus-visible { border-color: var(--gold); outline: none; }
+.lobby button:disabled { opacity: .45; cursor: default; border-color: var(--line); }
+#nick-form { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+#lobby-state { margin: 0; min-height: 1.4em; color: var(--gold); text-align: center; }
+.lobby-grid { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); gap: 12px; }
+#roster, #chat-log { list-style: none; margin: 0; padding: 8px; background: var(--panel); border: 1px solid var(--line); border-radius: 4px; }
+#roster { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+.player { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; }
+.player-name { color: #fff; font-weight: bold; unicode-bidi: plaintext; }
+.player-info { color: var(--muted); font-size: 12px; flex: 1 1 100%; }
+.player-unreachable .player-name { color: var(--muted); }
+.player button { padding: 0 8px; font-size: 12px; }
+.chat { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+#chat-log { height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
+#chat-log li { display: block; }
+.chat-name { color: var(--gold); margin-inline-end: .5em; unicode-bidi: plaintext; }
+.chat-mine .chat-name { color: var(--orange); }
+.chat-text { unicode-bidi: plaintext; overflow-wrap: anywhere; }
+.chat-system { color: var(--muted); font-style: italic; }
+#chat-form { display: flex; gap: 8px; }
+#chat-input { flex: 1; min-width: 0; unicode-bidi: plaintext; }
+.lobby-note, .lobby-or { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
+
 @media (max-width: 760px) {
+  .lobby-grid { grid-template-columns: 1fr; }
   main { grid-template-columns: 1fr; }
   .box { position: static; width: min(55vw, 240px); }
   canvas { max-width: 100%; }
