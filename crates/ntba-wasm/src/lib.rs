@@ -121,6 +121,18 @@ pub extern "C" fn ntba_score(team: u32) -> u32 {
     with_state(|s| s.shown().score.get(team as usize).copied().unwrap_or(0)).unwrap_or(0)
 }
 
+/// How many times sound cue `id` (see `ntba_core::game::Cue`) has fired in the game being shown.
+#[no_mangle]
+pub extern "C" fn ntba_cue(id: u32) -> u32 {
+    with_state(|s| s.shown().cues.get(id as usize).copied().unwrap_or(0)).unwrap_or(0)
+}
+
+/// Ticks played by the game being shown (low 32 bits); a drop means a new game.
+#[no_mangle]
+pub extern "C" fn ntba_ticks() -> u32 {
+    with_state(|s| s.shown().ticks as u32).unwrap_or(0)
+}
+
 /// 1 once the game being shown has reached the final buzzer, else 0. The host uses it to leave the
 /// match and return to the title screen.
 #[no_mangle]

@@ -10,6 +10,7 @@ import { Lobby } from './lobby.js';
 import { renderRoster } from './lobby-ui.js';
 import { CHALLENGE_TIMEOUT_MS, initialChallenges, reduce } from './challenge.js';
 import { cleanNick } from './lobby-protocol.js';
+import { CUE_SOUNDS, CueTracker, FINAL_BUZZER, Sound, endingSound, loadPref, savePref } from './sound.js';
 
 const BUTTONS = {
   UP: 1 << 0, DOWN: 1 << 1, LEFT: 1 << 2, RIGHT: 1 << 3,
@@ -68,6 +69,7 @@ const ui = {
   challengeText: document.getElementById('challenge-text'),
   challengeAccept: document.getElementById('challenge-accept'),
   challengeDecline: document.getElementById('challenge-decline'),
+  soundToggle: document.getElementById('sound-toggle'),
 };
 
 const PLAYING = new Set(['local', 'cpu', 'match']);
@@ -79,8 +81,55 @@ let screen = 'title'; // 'title' | 'local' | 'cpu-setup' | 'cpu' | 'online' | 'm
 // Presses shorter than one tick (a quick tap between frames) must still register.
 let pending = 0;
 
+// ---- sound -------------------------------------------------------------------------
+const sound = new Sound();
+const store = (() => { try { return localStorage; } catch { return null; } })();
+let soundOn = loadPref(store);
+
+function showSound() {
+  ui.soundToggle.setAttribute('aria-pressed', String(soundOn));
+  ui.soundToggle.textContent = soundOn ? 'Sound: on' : 'Sound: off';
+}
+
+function setSound(on) {
+  soundOn = on;
+  savePref(store, on);
+  showSound();
+  sound.setEnabled(on)
+    .then(() => { if (on) sound.play('ui_select'); })
+    .catch((err) => console.warn(`sound: ${err.message}`));
+}
+
+ui.soundToggle.addEventListener('click', () => {
+  setSound(!soundOn);
+  if (PLAYING.has(screen)) canvas.focus();
+});
+showSound();
+if (soundOn) {
+  // Start a remembered "on" on the first click or key.
+  const wake = () => {
+    window.removeEventListener('pointerdown', wake, true);
+    window.removeEventListener('keydown', wake, true);
+    if (soundOn) sound.setEnabled(true).catch((err) => console.warn(`sound: ${err.message}`));
+  };
+  window.addEventListener('pointerdown', wake, true);
+  window.addEventListener('keydown', wake, true);
+}
+
+const BACK_BUTTONS = new Set(['menu-back', 'leave-btn', 'challenge-decline']);
+document.addEventListener('click', (e) => {
+  const button = e.target instanceof Element ? e.target.closest('button') : null;
+  if (!button || button === ui.soundToggle) return;
+  sound.play(BACK_BUTTONS.has(button.id) ? 'ui_back' : 'ui_select');
+});
+ui.cpuSetup.addEventListener('change', () => sound.play('ui_move'));
+
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return; // typing a room code
+  if (e.code === 'KeyM' && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    setSound(!soundOn);
+    return;
+  }
   if (!PLAYING.has(screen)) return; // title, setup and lobby take no game input
   const bit = KEYMAP[e.code];
   if (bit === undefined) return;
@@ -308,6 +357,7 @@ async function main() {
     }
     if (fx.join) join(fx.join);
     if (fx.prompt) {
+      sound.play('ui_notify');
       // The name sits in its own <bdi> so a Hebrew name cannot reorder the rest of the sentence.
       const who = document.createElement('bdi');
       who.textContent = names().get(fx.prompt.from) ?? 'Someone';
@@ -368,7 +418,10 @@ async function main() {
       },
       onPeerMessage: (from, msg) => dispatch({ type: 'msg', from, msg }),
       onPeerLeft: (id) => dispatch({ type: 'peer-left', id }),
-      onChat: (m) => chat.add({ name: m.from.name, text: m.text, mine: m.mine }),
+      onChat: (m) => {
+        chat.add({ name: m.from.name, text: m.text, mine: m.mine });
+        if (!m.mine) sound.play('ui_notify');
+      },
     });
     lobby.connect();
   }
@@ -496,6 +549,21 @@ async function main() {
   }
   renderScreen();
 
+  // ---- game sounds -------------------------------------------------------------------
+  const cues = new CueTracker();
+  const cueCounts = CUE_SOUNDS.map(() => 0);
+  function playCues() {
+    for (let i = 0; i < cueCounts.length; i++) cueCounts[i] = wasm.ntba_cue(i) >>> 0;
+    const fired = cues.update(wasm.ntba_ticks() >>> 0, cueCounts);
+    if (!PLAYING.has(screen)) return; // the idle demo stays quiet
+    for (const id of fired) for (const name of CUE_SOUNDS[id]) sound.play(name);
+    if (fired.includes(FINAL_BUZZER)) {
+      const side = screen === 'cpu' ? cpu.side : screen === 'match' ? wasm.ntba_net_side() : null;
+      const name = endingSound([wasm.ntba_score(0), wasm.ntba_score(1)], side);
+      if (name) sound.play(name, 1.6);
+    }
+  }
+
   // ---- main loop ---------------------------------------------------------------------
   let last = performance.now();
   let acc = 0;
@@ -546,6 +614,7 @@ async function main() {
         acc -= tickMs;
       }
     }
+    playCues();
     if (PLAYING.has(screen)) {
       if (!wasm.ntba_game_over()) finalSince = null;
       else if (finalSince === null) finalSince = now;
