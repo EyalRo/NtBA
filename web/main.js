@@ -61,6 +61,7 @@ const ui = {
   nickInput: document.getElementById('nick-input'),
   lobbyMain: document.getElementById('lobby-main'),
   lobbyState: document.getElementById('lobby-state'),
+  lobbyRetry: document.getElementById('lobby-retry'),
   roster: document.getElementById('roster'),
   chatLog: document.getElementById('chat-log'),
   chatForm: document.getElementById('chat-form'),
@@ -178,6 +179,11 @@ async function main() {
     if (!SIGNALING_URL) return;
     ui.host.disabled = true;
     ui.form.querySelector('button').disabled = true;
+    if (link) { // never leave a second link feeding the one session
+      const old = link;
+      link = null;
+      old.close();
+    }
     link = new PeerLink(SIGNALING_URL, {
       onCode: (code) => {
         say(`Room code: ${code} - share it with the other player.`);
@@ -206,6 +212,7 @@ async function main() {
         if (!online) endOnline(reason);
       },
     });
+    drawRoster(); // challenge buttons and Accept follow the busy state
     return link;
   }
 
@@ -269,6 +276,7 @@ async function main() {
   const LOBBY_TEXT = {
     connecting: 'Connecting to the lobby\u2026',
     online: 'In the lobby - chat is peer to peer.',
+    unreachable: "Can't reach the lobby. Retrying\u2026 (the room code below still works)",
     reconnecting: "Lost the lobby connection - retrying\u2026 (the room code below still works)",
     full: 'The lobby is full (16 players). Try again soon, or play with a room code below.',
   };
@@ -290,6 +298,7 @@ async function main() {
     'no-answer': 'No answer to your challenge.',
     simultaneous: 'You both challenged each other at once - try again.',
     'hosting-failed': "Couldn't set up the match - try again.",
+    'no-connect': "They didn't connect - try again.",
   };
   let challenges = initialChallenges();
   const challengeTimers = { out: null, inc: null };
@@ -303,6 +312,7 @@ async function main() {
       onChallenge: (id) => dispatch({ type: 'start', to: id }),
       busy: isBusy,
     });
+    ui.challengeAccept.disabled = isBusy(); // the reducer also refuses a busy accept
   }
 
   function dispatch(ev) {
@@ -323,10 +333,16 @@ async function main() {
     }
     if (fx.join) join(fx.join);
     if (fx.prompt) {
-      ui.challengeText.textContent = `${names().get(fx.prompt.from) ?? 'Someone'} challenges you to a match.`;
+      // The name sits in its own <bdi> so a Hebrew name cannot reorder the rest of the sentence.
+      const who = document.createElement('bdi');
+      who.textContent = names().get(fx.prompt.from) ?? 'Someone';
+      ui.challengeText.replaceChildren(who, document.createTextNode(' challenges you to a match.'));
       ui.challengeBox.hidden = false;
     }
-    if (fx.closePrompt) ui.challengeBox.hidden = true;
+    if (fx.closePrompt) {
+      ui.challengeBox.hidden = true;
+      ui.challengeText.replaceChildren();
+    }
     if (fx.notify) ui.lobbyState.textContent = CHALLENGE_TEXT[fx.notify] ?? '';
     if (fx.clearTimer) clearTimeout(challengeTimers[fx.clearTimer]);
     if (fx.timer) {
@@ -340,7 +356,7 @@ async function main() {
     const out = challenges.out;
     if (!out) return;
     if (out.phase === 'sent' || out.phase === 'accepted') lobby?.sendTo(out.to, { type: 'cancel' });
-    dispatch({ type: 'peer-left', id: out.to });
+    dispatch({ type: 'abandon' });
   }
 
   async function hostForChallenge() {
@@ -364,6 +380,7 @@ async function main() {
   }
 
   ui.challengeAccept.addEventListener('click', () => dispatch({ type: 'accept-in' }));
+  ui.lobbyRetry.addEventListener('click', () => lobby?.retryNow());
   ui.challengeDecline.addEventListener('click', () => dispatch({ type: 'decline-in' }));
 
   function enterLobby(nick) {
@@ -371,7 +388,11 @@ async function main() {
     ui.nickForm.hidden = true;
     ui.lobbyMain.hidden = false;
     lobby = new Lobby(SIGNALING_URL, nick, {
-      onState: ({ phase }) => { ui.lobbyState.textContent = LOBBY_TEXT[phase] ?? ''; },
+      onState: ({ phase, everConnected }) => {
+        const key = phase === 'reconnecting' && !everConnected ? 'unreachable' : phase;
+        ui.lobbyState.textContent = LOBBY_TEXT[key] ?? '';
+        ui.lobbyRetry.hidden = phase !== 'reconnecting' && phase !== 'full';
+      },
       onRoster: (players) => {
         lastPlayers = players;
         drawRoster();
@@ -386,6 +407,7 @@ async function main() {
   function leaveLobby() {
     challenges = initialChallenges();
     ui.challengeBox.hidden = true;
+    ui.lobbyRetry.hidden = true;
     clearTimeout(challengeTimers.out);
     clearTimeout(challengeTimers.inc);
     lobby?.close();
