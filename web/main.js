@@ -218,9 +218,14 @@ async function main() {
 
   async function host() {
     showBusy('Creating a room…');
+    const l = startOnline('host');
     try {
-      await startOnline('host')?.host();
+      await l?.host();
     } catch (err) {
+      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
+        l?.close();
+        return;
+      }
       const message = err instanceof ConnectError ? err.message : `Could not start an online game: ${err.message}`;
       link?.close();
       link = null;
@@ -231,9 +236,14 @@ async function main() {
 
   async function join(code) {
     showBusy('Joining…');
+    const l = startOnline('guest');
     try {
-      await startOnline('guest')?.join(code);
+      await l?.join(code);
     } catch (err) {
+      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
+        l?.close();
+        return;
+      }
       const message = err instanceof ConnectError ? err.message : `Could not join: ${err.message}`;
       link?.close();
       link = null;
