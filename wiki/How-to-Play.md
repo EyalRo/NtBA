@@ -34,6 +34,7 @@ under the arena lights, and sink one while the pixel crowd goes wild.
 | **Z** | **J** | Pass; hold a direction to pick your target |
 | **C** | **L** | Switch to the teammate nearest the ball |
 | **M** | **M** | Sound on / off |
+| **B** | **B** | Colour-blind mode on / off |
 
 Sound is off when you first open the game. Press **M** or the Sound button under the screen at any
 point (title, lobby or mid-game) to turn the C64-style effects on or off; the page remembers your

@@ -48,6 +48,7 @@ NtBA is an open-source basketball game in the spirit of the late-80s home-comput
 | **Z** | **J** | Pass (hold a direction to pick your target) |
 | **C** | **L** | Switch to the teammate nearest the ball |
 | **M** | **M** | Sound on / off |
+| **B** | **B** | Colour-blind mode on / off (away team wears blue instead of green) |
 
 Run into the ball handler to strip the ball. Against the CPU or online, you control one team and either key set works. Sound starts off; turn it on with **M** or the Sound button under the screen at any time.
 

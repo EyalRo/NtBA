@@ -49,6 +49,8 @@ pub struct Framebuffer {
     pub idx: Vec<u8>,
     pub rgba: Vec<u8>,
     lut: Vec<[u8; 3]>,
+    /// Colour-blind-safe team colours: away wears blue instead of green (see [`team_look`]).
+    pub colourblind: bool,
     cam_x: f32,
     cam_ready: bool,
     last_view: Option<View>,
@@ -69,6 +71,7 @@ impl Framebuffer {
                 .iter()
                 .map(|c| [vga(c[0]), vga(c[1]), vga(c[2])])
                 .collect(),
+            colourblind: false,
             cam_x: COURT_L / 2.0,
             cam_ready: false,
             last_view: None,
@@ -460,38 +463,42 @@ fn draw_crowd(fb: &mut Framebuffer, cam: f32, ticks: u64) {
     }
 }
 
-const fn look(team: usize, skin: usize, hair: usize, number: u8) -> Look {
-    let home = team == 0;
+/// Skin, hair and jersey number of each player on a team.
+const ROSTERS: [[(usize, usize, u8); 5]; 2] = [
+    [(1, 0, 4), (0, 2, 12), (2, 0, 23), (1, 1, 32), (2, 0, 45)],
+    [(0, 1, 3), (2, 0, 8), (1, 2, 10), (2, 1, 21), (0, 0, 33)],
+];
+
+/// Kit colours of a team: (top, trim, shorts). Home is gold and purple; away is green, or blue in
+/// colour-blind mode, because gold and green are nearly the same hue to red-green colour-blind eyes
+/// while gold and blue differ in both hue and lightness.
+fn kit(team: usize, colourblind: bool) -> (Ramp, Ramp, Ramp) {
+    match (team, colourblind) {
+        (0, _) => (GOLD, PURPLE, PURPLE),
+        (_, false) => (GREEN, CLOTH, GREEN),
+        (_, true) => (BLUE, CLOTH, NAVY),
+    }
+}
+
+fn team_look(team: usize, i: usize, colourblind: bool) -> Look {
+    let (skin, hair, number) = ROSTERS[team][i];
+    let (top, trim, shorts) = kit(team, colourblind);
     Look {
         skin,
         hair,
-        top: if home { GOLD } else { GREEN },
-        trim: if home { PURPLE } else { CLOTH },
-        shorts: if home { PURPLE } else { GREEN },
+        top,
+        trim,
+        shorts,
         number,
         stripes: false,
         suit: false,
     }
 }
 
-const TEAM_LOOKS: [[Look; 5]; 2] = [
-    [
-        look(0, 1, 0, 4),
-        look(0, 0, 2, 12),
-        look(0, 2, 0, 23),
-        look(0, 1, 1, 32),
-        look(0, 2, 0, 45),
-    ],
-    [
-        look(1, 0, 1, 3),
-        look(1, 2, 0, 8),
-        look(1, 1, 2, 10),
-        look(1, 2, 1, 21),
-        look(1, 0, 0, 33),
-    ],
-];
 /// Light tone of each team's colour, for the controlled-player marker and the scoreboard.
-const TEAM_ACCENT: [u8; 2] = [GOLD[3], GREEN[3]];
+fn team_accent(team: usize, colourblind: bool) -> u8 {
+    kit(team, colourblind).0[3]
+}
 const REF_LOOK: Look = Look {
     skin: 1,
     hair: 0,
@@ -524,16 +531,17 @@ fn draw_bench_area(fb: &mut Framebuffer, cam: f32) {
             }
         }
     }
-    // Home bench in gold warm-ups, visitors in green, coaches in suits.
+    // Home bench in gold warm-ups, visitors in their top colour, coaches in suits.
     for (k, x) in [8.0_f32, 11.5, 15.0, 18.5, 22.0].iter().enumerate() {
         let (sx, _) = project(cam, *x, -1.5, 0.0);
-        let l = &TEAM_LOOKS[0][k];
-        fb.sprite(&seated_person(GOLD, l.skin, l.hair, false), sx, BENCH_FEET);
+        let l = team_look(0, k, fb.colourblind);
+        fb.sprite(&seated_person(l.top, l.skin, l.hair, false), sx, BENCH_FEET);
     }
+    let away_top = kit(1, fb.colourblind).0;
     for (k, x) in [66.0_f32, 69.5, 73.0, 76.5, 80.0].iter().enumerate() {
         let (sx, _) = project(cam, *x, -1.5, 0.0);
         fb.sprite(
-            &seated_person(GREEN, [0, 2, 1, 2, 0][k], k % 3, false),
+            &seated_person(away_top, [0, 2, 1, 2, 0][k], k % 3, false),
             sx,
             BENCH_FEET,
         );
@@ -971,7 +979,7 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: Cam, i: usize) {
         ball_hand,
     };
     let team = team_of(i);
-    let look = &TEAM_LOOKS[team][i % TEAM_SIZE];
+    let look = &team_look(team, i % TEAM_SIZE, fb.colourblind);
     let controlled = i == g.controlled[team] && g.phase == Phase::Playing;
     match cam.view {
         View::Side => {
@@ -993,7 +1001,13 @@ fn draw_player(g: &Game, fb: &mut Framebuffer, cam: Cam, i: usize) {
     if controlled && (g.ticks / 20) % 2 == 0 {
         let top = sy - cam.body_h();
         for (k, w) in [7, 5, 3, 1].iter().enumerate() {
-            fb.rect(sx - w / 2, top + k as i32, *w, 1, TEAM_ACCENT[team]);
+            fb.rect(
+                sx - w / 2,
+                top + k as i32,
+                *w,
+                1,
+                team_accent(team, fb.colourblind),
+            );
         }
         fb.rect(sx - 4, top - 1, 9, 1, BLACK);
     }
@@ -1027,7 +1041,7 @@ fn draw_offscreen_markers(g: &Game, fb: &mut Framebuffer, cam: Cam) {
             (mx - uy * 5.0, my + ux * 5.0),
             (mx + uy * 5.0, my - ux * 5.0),
         ];
-        let shirt = TEAM_LOOKS[team][0].top;
+        let shirt = kit(team, fb.colourblind).0;
         fb.triangle(corners, shirt[2]);
         for k in 0..3 {
             let (a, b) = (corners[k], corners[(k + 1) % 3]);
@@ -1067,8 +1081,8 @@ fn draw_scoreboard(g: &Game, fb: &mut Framebuffer) {
     fb.dot_text(10, 13, &format!("{}:{:02}", secs / 60, secs % 60));
     fb.dot_text(70, 13, &format!("{:02}", g.shot_clock.ceil() as u32));
 
-    fb.text(10, 32, "HOME", TEAM_ACCENT[0], 1);
-    fb.text(58, 32, "AWAY", TEAM_ACCENT[1], 1);
+    fb.text(10, 32, "HOME", team_accent(0, fb.colourblind), 1);
+    fb.text(58, 32, "AWAY", team_accent(1, fb.colourblind), 1);
     fb.dot_text(10, 39, &format!("{:03}", g.score[0]));
     fb.dot_text(58, 39, &format!("{:03}", g.score[1]));
 }
@@ -1237,6 +1251,37 @@ mod tests {
             })
         });
         assert!(edge_changed, "a green arrow on the right edge");
+    }
+
+    #[test]
+    fn colourblind_mode_swaps_green_for_blue_on_the_away_team() {
+        assert_eq!(team_look(1, 0, false).top, GREEN);
+        assert_eq!(team_look(1, 0, true).top, BLUE);
+        assert_eq!(team_look(0, 0, true).top, GOLD);
+        // Home and away tops must differ clearly in lightness, not just hue.
+        let lum = |c: u8| {
+            let [r, g, b] = PALETTE[c as usize];
+            0.2126 * r as f32 + 0.7152 * g as f32 + 0.0722 * b as f32
+        };
+        assert!((lum(GOLD[2]) - lum(BLUE[2])).abs() > 60.0);
+        assert!(team_look(1, 0, true).shorts != PURPLE);
+    }
+
+    #[test]
+    fn colourblind_arrow_is_blue_not_green() {
+        let mut g = Game::new(2);
+        let mut fb = Framebuffer::new();
+        fb.colourblind = true;
+        let away = g.controlled[1];
+        g.players[away].x = 90.0;
+        g.players[away].y = 25.0;
+        draw(&g, &mut fb);
+        let edge = |c: u8| {
+            (60..BOTTOM_STRIP)
+                .any(|y| (SCREEN_W - 12..SCREEN_W).any(|x| fb.idx[y as usize * SCREEN_W + x] == c))
+        };
+        assert!(edge(BLUE[2]), "a blue arrow on the right edge");
+        assert!(!edge(GREEN[2]));
     }
 
     #[test]
