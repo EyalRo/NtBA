@@ -87,6 +87,12 @@ export class PeerLink {
     ws.onclose = () => {
       if (!this.open && !this.closed) this.#fail('The signalling connection closed before the game connected.');
     };
+    // The host waits for a guest for as long as the room lives; its clock starts at 'peer-joined'.
+    if (role === 'guest') this.#startConnectTimer();
+  }
+
+  #startConnectTimer() {
+    clearTimeout(this.timer);
     this.timer = setTimeout(() => this.#fail(NO_DIRECT_PATH), CONNECT_TIMEOUT_MS);
   }
 
@@ -101,6 +107,7 @@ export class PeerLink {
         break;
       case 'peer-joined': // host only: a guest is here, start the handshake
         this.h.onStatus?.('Player found - connecting…');
+        this.#startConnectTimer();
         await pc.setLocalDescription(await pc.createOffer());
         this.#signal({ type: 'offer', sdp: pc.localDescription.sdp });
         break;
