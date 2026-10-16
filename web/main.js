@@ -163,6 +163,7 @@ async function main() {
     const l = link;
     link = null;
     online = false;
+    abandonChallenge(); // no-op after a match (match-started cleared it); else resets a failed challenge
     wasm.ntba_net_discard();
     // Give the Bye a moment to leave before tearing the connection down.
     setTimeout(() => l?.close(), 250);
@@ -217,6 +218,7 @@ async function main() {
       link?.close();
       link = null;
       showMenu(message);
+      drawRoster();
     }
   }
 
@@ -229,6 +231,7 @@ async function main() {
       link?.close();
       link = null;
       showMenu(message);
+      drawRoster();
     }
   }
 
@@ -250,10 +253,12 @@ async function main() {
         drainNet();
         endOnline(END_TEXT[2]);
       } else {
+        abandonChallenge(); // before closing: it may need to cancel the pending challenge
         const l = link;
         link = null;
         l?.close();
         showMenu('');
+        drawRoster();
       }
     });
     showMenu();
@@ -330,11 +335,27 @@ async function main() {
     }
   }
 
+  // Drop our outgoing challenge (Leave, or the link failed): tell the target if they saw it.
+  function abandonChallenge() {
+    const out = challenges.out;
+    if (!out) return;
+    if (out.phase === 'sent' || out.phase === 'accepted') lobby?.sendTo(out.to, { type: 'cancel' });
+    dispatch({ type: 'peer-left', id: out.to });
+  }
+
   async function hostForChallenge() {
     showBusy('Challenging\u2026');
+    const l = startOnline('host', (room) => {
+      if (link === l) dispatch({ type: 'room', room });
+      else l?.close();
+    });
     try {
-      await startOnline('host', (room) => dispatch({ type: 'room', room }))?.host();
+      await l?.host();
     } catch (err) {
+      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
+        l?.close();
+        return;
+      }
       link?.close();
       link = null;
       showMenu(err instanceof ConnectError ? err.message : `Could not start an online game: ${err.message}`);
