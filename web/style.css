@@ -129,7 +129,7 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-bottom-wid
 .chat-system { color: var(--muted); font-style: italic; }
 #chat-form { display: flex; gap: 8px; }
 #chat-input { flex: 1; min-width: 0; unicode-bidi: plaintext; }
-.lobby-note, .lobby-or { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
+.lobby-note { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
 
 .challenge-box {
   display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { beforeEach, test } from 'node:test';
-import { MAX_MESSAGES_PER_MINUTE, MAX_PLAYERS } from '../src/lobby-logic.js';
+import { IDLE_TIMEOUT_MS, MAX_MESSAGES_PER_MINUTE, MAX_PLAYERS, SWEEP_MS } from '../src/lobby-logic.js';
 import { Lobby } from '../src/lobby.js';
 
 class FakeSocket {
@@ -27,6 +27,13 @@ class FakeSocket {
 class FakeCtx {
   constructor() {
     this.sockets = [];
+    this.alarm = null;
+    this.storage = {
+      getAlarm: async () => this.alarm,
+      setAlarm: async (t) => {
+        this.alarm = t;
+      },
+    };
   }
   acceptWebSocket(ws) {
     this.sockets.push(ws);
@@ -200,4 +207,68 @@ test('admit never closes fresh unjoined sockets or joined players', async () => 
   assert.deepEqual(lobby.admit(), { ok: true });
   assert.equal(fresh.closed, null);
   assert.equal(joined.closed, null);
+});
+
+// ---- idle sweep: a socket that stops talking must not stay in the roster ----
+
+const makeQuiet = (ws, ms) => {
+  const att = ws.deserializeAttachment();
+  att.seen = Date.now() - ms;
+  ws.serializeAttachment(att);
+};
+
+test('a ping is accepted silently and keeps the socket alive', async () => {
+  const a = await connect(idOf(1));
+  makeQuiet(a, IDLE_TIMEOUT_MS + 5_000);
+  await lobby.webSocketMessage(a, JSON.stringify({ type: 'ping' }));
+  const before = a.sent.length;
+  await lobby.alarm();
+  assert.equal(a.closed, null);
+  assert.equal(a.sent.length, before); // no reply and no error
+});
+
+test('the sweep closes a joined socket that went quiet and tells the others once', async () => {
+  const ghost = await connect(idOf(1), 'Dino');
+  const b = await connect(idOf(2), 'Ann');
+  makeQuiet(ghost, IDLE_TIMEOUT_MS + 5_000);
+  await lobby.alarm();
+  assert.deepEqual(ghost.closed, { code: 1001, reason: 'idle' });
+  assert.deepEqual(b.sent.filter((m) => m.type === 'left'), [{ type: 'left', id: idOf(1) }]);
+  // The close handler that follows must not announce the same player again.
+  await lobby.webSocketClose(ghost);
+  assert.equal(b.sent.filter((m) => m.type === 'left').length, 1);
+});
+
+test('the sweep keeps sockets heard from recently and closes quiet unjoined ones silently', async () => {
+  const live = await connect(idOf(1));
+  const b = await connect(idOf(2));
+  makeQuiet(live, IDLE_TIMEOUT_MS - 5_000);
+  const unjoined = new FakeSocket();
+  unjoined.attachment.created = Date.now() - IDLE_TIMEOUT_MS - 5_000;
+  ctx.acceptWebSocket(unjoined);
+  await lobby.alarm();
+  assert.equal(live.closed, null);
+  assert.deepEqual(unjoined.closed, { code: 1001, reason: 'idle' });
+  assert.equal(types(b).includes('left'), false);
+});
+
+test('a socket from before heartbeats existed, with no seen time, is swept by its age', async () => {
+  const ghost = await connect(idOf(1));
+  const att = ghost.deserializeAttachment();
+  delete att.seen;
+  att.created = Date.now() - IDLE_TIMEOUT_MS - 5_000;
+  ghost.serializeAttachment(att);
+  await lobby.alarm();
+  assert.ok(ghost.closed);
+});
+
+test('the sweep reschedules itself while sockets remain, and stops when none do', async () => {
+  const a = await connect(idOf(1));
+  ctx.alarm = null;
+  await lobby.alarm();
+  assert.ok(ctx.alarm >= Date.now() + SWEEP_MS - 1000);
+  a.close(1000, 'bye');
+  ctx.alarm = null;
+  await lobby.alarm();
+  assert.equal(ctx.alarm, null);
 });

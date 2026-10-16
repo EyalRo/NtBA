@@ -3,7 +3,7 @@
 const LINK_TEXT = {
   self: 'you',
   open: 'connected',
-  connecting: 'connecting…',
+  connecting: 'reaching for chat…',
   unreachable: "can't reach for chat or challenges",
 };
 

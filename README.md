@@ -38,9 +38,9 @@ and a glowing broadcast scoreboard. Everything (art and sound) is original.
 
 Two browsers, zero game servers.
 
-1. Hit **Host an online game** and get a 6-character code.
-2. Send the code to your friend.
-3. They type it into **Join with code**. Tip-off.
+1. Choose **Online**, pick a name, and you're in the lobby: see who's around and chat.
+2. Press **Challenge** next to a player. They get 30 seconds to **Accept** or **Decline**.
+3. Accepted? Tip-off.
 
 Under the hood it's peer-to-peer: WebRTC data channels plus deterministic lock-step netcode, so the
 two browsers only swap a few bytes of input per frame and both simulate the exact same game, down
@@ -55,9 +55,10 @@ Want the nerdy details? They're in the wiki: [Online Play](https://github.com/Ey
 | **X** | **K** | Shoot (on defence: swipe for a steal or jump to block) |
 | **Z** | **J** | Pass (hold a direction to pick your target) |
 | **C** | **L** | Switch to the teammate nearest the ball |
-| **Enter** | | Play again after the final buzzer |
 
-Run into the ball handler to strip the ball. Keys not responding? Click the game first.
+Run into the ball handler to strip the ball. Online you control one team (the challenger is Home, the
+challenged player is Away) and either key set works. When the final buzzer sounds you see the score for a
+few seconds, then you're back on the title screen. Keys not responding? Click the game first.
 
 ## ✨ What's in the box
 

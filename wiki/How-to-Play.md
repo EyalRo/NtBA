@@ -14,7 +14,7 @@ under the arena lights, and sink one while the pixel crowd goes wild.
 - 🏀 **Two players, one keyboard**: five-on-five, each of you steers one player and the AI runs the
   other four, against the shot clock and the game clock
 - 🌐 **Two players, two computers**: meet in the online lobby, chat and challenge someone, or send
-  a friend a room code (see [Online Play](Online-Play))
+  accept or decline (see [Online Play](Online-Play))
 - 🛡️ **Real defence**: run into the ball handler to strip the ball, swipe for steals, block shots,
   jump passing lanes
 - 🎥 **Two camera angles**: a sideline view for the break, and an end-on view when you attack the hoop
@@ -33,7 +33,9 @@ under the arena lights, and sink one while the pixel crowd goes wild.
 | **X** | **K** | Shoot; on defence, swipe for a steal or jump to block |
 | **Z** | **J** | Pass; hold a direction to pick your target |
 | **C** | **L** | Switch to the teammate nearest the ball |
-| **Enter** | | Play again after the final buzzer |
+
+When the final buzzer sounds you see the score for a few seconds and are taken back to the title
+screen, where you can start a new local game or go online again. There is no restart key.
 
 On defence, run into the ball handler to steal the ball. Lost your player off screen? An arrow in
 your shirt colour on the edge of the screen points the way. Click the game if the keys don't
@@ -62,10 +64,6 @@ online play is not configured or your browser has no WebRTC.
    **Accept** or **Decline**. A player who is in a match cannot be challenged.
 5. The challenger plays Home (gold) and the challenged player plays Away (green). Both of you can use
    either key set (WASD or the arrow keys) for your own player.
-
-**With a room code instead:** one of you presses **Host an online game** and gets a 6-character code
-(valid for 10 minutes); the other types it into **Join with code** and presses **Join**. The host
-plays Home and the guest plays Away.
 
 If the page says it couldn't connect directly, some networks block peer-to-peer connections: try
 again or try another network. How it works: [Online Play](Online-Play).

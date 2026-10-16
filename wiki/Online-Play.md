@@ -6,7 +6,9 @@ once connected, the players talk directly (match traffic, chat and challenges ne
 the service).
 
 Players meet in an **online lobby**: pick a name, see who else is online, chat, and challenge
-someone to a match. Room codes (Host / Join with code) remain as a fallback on the same page.
+someone to a match. They choose their opponent, and the opponent accepts or declines. There is no
+separate host or join-with-code screen: a challenge creates the room and sends its code to the
+chosen player behind the scenes.
 
 Tracking issue: [#9](https://github.com/EyalRo/NtBA/issues/9). Implementation steps:
 [#40](https://github.com/EyalRo/NtBA/issues/40) design (this page),
@@ -183,8 +185,7 @@ once, by the offering side, and is then shown as "can't reach for chat or challe
 socket reconnects with backoff (1, 2, 4, 8, then 15 s) using a fresh id, and a player who is in a
 match tells the lobby so again after every reconnect.
 
-If the lobby cannot be reached, the page says "Can't reach the lobby. Retrying…" (the room code
-below still works); after a connection that was working drops it says "Lost the lobby connection -
+If the lobby cannot be reached, the page says "Can't reach the lobby. Retrying…"; after a connection that was working drops it says "Lost the lobby connection -
 retrying…". While it is retrying, or when the lobby is full, a **Retry** button tries again at once.
 
 ### Chat
@@ -317,7 +318,7 @@ make serve                                    # game on http://localhost:8080
 ```
 
 Open the page in two windows and choose **Online** in each: pick names and challenge one from the
-other, or use **Host an online game** in one and type its code into **Join with code** in the other.
+other, then accept in that window.
 The Online button is hidden while `SIGNALING_URL` is empty or WebRTC is unavailable. The production
 setting points at the deployed Worker.
 

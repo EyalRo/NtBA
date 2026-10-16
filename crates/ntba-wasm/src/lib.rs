@@ -9,7 +9,7 @@ use std::cell::RefCell;
 
 mod net;
 
-use ntba_core::game::Game;
+use ntba_core::game::{Game, Phase};
 use ntba_core::render::{self, Framebuffer};
 use ntba_core::replay::{InputLog, DETERMINISM_SEED, DETERMINISM_SEED_HASH, DETERMINISM_TICKS};
 use ntba_core::{SCREEN_H, SCREEN_W, TICK_HZ};
@@ -96,6 +96,13 @@ pub extern "C" fn ntba_tick_hz() -> u32 {
 #[no_mangle]
 pub extern "C" fn ntba_score(team: u32) -> u32 {
     with_state(|s| s.shown().score.get(team as usize).copied().unwrap_or(0)).unwrap_or(0)
+}
+
+/// 1 once the game being shown has reached the final buzzer, else 0. The host uses it to leave the
+/// match and return to the title screen.
+#[no_mangle]
+pub extern "C" fn ntba_game_over() -> u32 {
+    with_state(|s| u32::from(s.shown().phase == Phase::Final)).unwrap_or(0)
 }
 
 /// Replays the fixed synthetic input script and returns the low 32 bits of the final state

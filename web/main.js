@@ -4,6 +4,7 @@
 import { SIGNALING_URL } from './config.js';
 import { ConnectError, PeerLink } from './net.js';
 import { nextScreen } from './flow.js';
+import { guardedAttempt } from './link-guard.js';
 import { ChatView } from './chat.js';
 import { Lobby } from './lobby.js';
 import { renderRoster } from './lobby-ui.js';
@@ -39,17 +40,12 @@ const END_TEXT = {
 };
 
 const INPUT_DELAY_TICKS = 6; // 100 ms; the host's choice, adopted by the guest
-const CODE_RE = /^[A-HJKMNP-Z2-9]{6}$/;
 
 const status = document.getElementById('status');
 const canvas = document.getElementById('screen');
 const ctx = canvas.getContext('2d');
 const ui = {
   panel: document.getElementById('online'),
-  menu: document.getElementById('online-menu'),
-  host: document.getElementById('host-btn'),
-  form: document.getElementById('join-form'),
-  code: document.getElementById('join-code'),
   leave: document.getElementById('leave-btn'),
   text: document.getElementById('online-status'),
   title: document.getElementById('menu'),
@@ -120,15 +116,11 @@ async function main() {
   const say = (text) => { ui.text.textContent = text; };
 
   function showMenu(message = '') {
-    ui.menu.hidden = false;
     ui.leave.hidden = true;
-    ui.host.disabled = false;
-    ui.form.querySelector('button').disabled = false;
     say(message);
   }
 
   function showBusy(message) {
-    ui.menu.hidden = true;
     ui.leave.hidden = false;
     say(message);
   }
@@ -177,8 +169,6 @@ async function main() {
 
   function startOnline(role, onRoom) {
     if (!SIGNALING_URL) return;
-    ui.host.disabled = true;
-    ui.form.querySelector('button').disabled = true;
     if (link) { // never leave a second link feeding the one session
       const old = link;
       link = null;
@@ -216,54 +206,23 @@ async function main() {
     return link;
   }
 
-  async function host() {
-    showBusy('Creating a room…');
-    const l = startOnline('host');
-    try {
-      await l?.host();
-    } catch (err) {
-      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
-        l?.close();
-        return;
-      }
-      const message = err instanceof ConnectError ? err.message : `Could not start an online game: ${err.message}`;
+  function failOnline(prefix) {
+    return (err) => {
+      const message = err instanceof ConnectError ? err.message : `${prefix}: ${err.message}`;
       link?.close();
       link = null;
       showMenu(message);
       drawRoster();
-    }
+    };
   }
 
   async function join(code) {
     showBusy('Joining…');
-    const l = startOnline('guest');
-    try {
-      await l?.join(code);
-    } catch (err) {
-      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
-        l?.close();
-        return;
-      }
-      const message = err instanceof ConnectError ? err.message : `Could not join: ${err.message}`;
-      link?.close();
-      link = null;
-      showMenu(message);
-      drawRoster();
-    }
+    await guardedAttempt(startOnline('guest'), () => link, (l) => l?.join(code), failOnline('Could not join'));
   }
 
   const canOnline = Boolean(SIGNALING_URL) && typeof RTCPeerConnection !== 'undefined';
   if (canOnline) {
-    ui.host.addEventListener('click', host);
-    ui.form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const code = ui.code.value.toUpperCase().replace(/[\s-]/g, '');
-      if (!CODE_RE.test(code)) {
-        say('That code does not look right - it is 6 letters and digits.');
-        return;
-      }
-      join(code);
-    });
     ui.leave.addEventListener('click', () => {
       if (online) {
         wasm.ntba_net_stop();
@@ -375,18 +334,12 @@ async function main() {
       if (link === l) dispatch({ type: 'room', room });
       else l?.close();
     });
-    try {
-      await l?.host();
-    } catch (err) {
-      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
-        l?.close();
-        return;
-      }
+    await guardedAttempt(l, () => link, (x) => x?.host(), (err) => {
       link?.close();
       link = null;
       showMenu(err instanceof ConnectError ? err.message : `Could not start an online game: ${err.message}`);
       dispatch({ type: 'hosting-failed' });
-    }
+    });
   }
 
   ui.challengeAccept.addEventListener('click', () => dispatch({ type: 'accept-in' }));
@@ -473,7 +426,8 @@ async function main() {
     go('local');
   });
   ui.titleOnline.addEventListener('click', () => go('online'));
-  ui.back.addEventListener('click', () => {
+  // Back to the title from the local game or the lobby. A local game is reset so the next one is fresh.
+  function returnToTitle() {
     if (screen === 'local') {
       wasm.ntba_init(newSeed());
       held = 0;
@@ -487,7 +441,21 @@ async function main() {
     if (screen === 'online') leaveLobby();
     go('menu');
     if (canOnline) showMenu('');
-  });
+  }
+  ui.back.addEventListener('click', returnToTitle);
+
+  // The final buzzer: no restart key. Hold the final score for a moment, then drop to the title,
+  // where the player can start a new local game or rejoin the lobby.
+  const FINAL_HOLD_MS = 5000;
+  let finalSince = null;
+  function finishGame() {
+    if (screen === 'match') {
+      wasm.ntba_net_stop(); // tells the peer; both sides reach the buzzer on the same tick
+      drainNet();
+      endOnline('');
+    }
+    returnToTitle();
+  }
   renderScreen();
 
   // ---- main loop ---------------------------------------------------------------------
@@ -537,6 +505,16 @@ async function main() {
         pending = 0;
         acc -= tickMs;
       }
+    }
+    if (screen === 'local' || screen === 'match') {
+      if (!wasm.ntba_game_over()) finalSince = null;
+      else if (finalSince === null) finalSince = now;
+      else if (now - finalSince >= FINAL_HOLD_MS) {
+        finalSince = null;
+        finishGame();
+      }
+    } else {
+      finalSince = null;
     }
     wasm.ntba_render();
     // Memory may have moved; always re-create the view from the current buffer.

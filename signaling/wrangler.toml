@@ -5,6 +5,7 @@ compatibility_date = "2026-10-01"
 # Keep the Worker's structured JSON logs (see src/logic.js log()) searchable in the dashboard.
 [observability]
 enabled = true
+head_sampling_rate = 1  # keep every line; traffic is tiny
 
 [vars]
 # Browser origins allowed to create rooms and open signalling sockets (comma separated).

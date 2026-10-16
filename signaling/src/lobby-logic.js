@@ -4,6 +4,11 @@ export const MAX_PLAYERS = 16;
 export const MAX_NICK_CHARS = 20;
 export const MAX_LOBBY_MESSAGE_BYTES = 8 * 1024;
 export const MAX_MESSAGES_PER_MINUTE = 600;
+// Clients send a ping this often; a socket silent for IDLE_TIMEOUT_MS is treated as dead. The
+// timeout is generous because background tabs throttle timers to about once a minute.
+export const HEARTBEAT_MS = 25_000;
+export const IDLE_TIMEOUT_MS = 150_000;
+export const SWEEP_MS = 30_000;
 
 const STATUSES = new Set(['lobby', 'in-match']);
 const ID_RE = /^[A-Za-z0-9]{12}$/;
@@ -45,6 +50,8 @@ export function parseClientMessage(data) {
       if (nick === null) return { kind: 'error', reason: 'bad-nick' };
       return { kind: 'hello', id: msg.id, nick };
     }
+    case 'ping':
+      return { kind: 'ping' };
     case 'status':
       if (!STATUSES.has(msg.status)) return { kind: 'error', reason: 'bad-status' };
       return { kind: 'status', status: msg.status };

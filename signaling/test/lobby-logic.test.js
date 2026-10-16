@@ -44,6 +44,10 @@ test('hello is validated', () => {
   assert.equal(parseClientMessage(msg({ type: 'hello', id: ID, nick: '' })).reason, 'bad-nick');
 });
 
+test('ping is accepted with no fields', () => {
+  assert.deepEqual(parseClientMessage(msg({ type: 'ping' })), { kind: 'ping' });
+});
+
 test('status is validated', () => {
   assert.deepEqual(parseClientMessage(msg({ type: 'status', status: 'in-match' })), { kind: 'status', status: 'in-match' });
   assert.equal(parseClientMessage(msg({ type: 'status', status: 'lobby' })).kind, 'status');
