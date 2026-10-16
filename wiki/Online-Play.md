@@ -181,8 +181,9 @@ socket reconnects with backoff (1, 2, 4, 8, then 15 s) using a fresh id.
 * Hebrew and English both work. Each message is its own `dir="auto"` block, so Hebrew lines
   right-align and English lines left-align.
 * Text is inserted as text only, never HTML, and bidi override and control characters are stripped.
-* Messages are up to 500 characters. You can send 2 messages per second; a peer that sends more than
-  5 per second is dropped, as are oversized or malformed peer messages.
+* Messages are up to 500 characters. You can send 2 messages per second. Messages from a peer above
+  5 per second (after a burst of 10) are dropped, as are oversized or malformed ones; the peer is not
+  disconnected.
 * Each player has a **Mute** button.
 
 ### Challenges
@@ -233,7 +234,7 @@ mobile carriers, strict firewalls). The page uses Cloudflare's STUN service
 relay** is supported but **off by default**: set `TURN_KEY_ID` and `TURN_KEY_API_TOKEN` as Worker
 secrets (never in the repo) and `/ice` starts returning short-lived TURN credentials.
 
-Per Cloudflare's documentation (checked October 2026) STUN is free and unlimited, and TURN is
+Per Cloudflare's documentation STUN is free and unlimited, and TURN is
 $0.05 per GB sent from Cloudflare with a monthly free allowance of 1,000 GB shared with Cloudflare's
 other real-time services. An NtBA match sends on the order of 1 to 2 KB per second, so the free
 allowance would go a very long way; the default is *no relay* so that nothing
