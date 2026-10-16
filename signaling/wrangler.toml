@@ -2,6 +2,10 @@ name = "ntba-signaling"
 main = "src/index.js"
 compatibility_date = "2026-10-01"
 
+# Keep the Worker's structured JSON logs (see src/logic.js log()) searchable in the dashboard.
+[observability]
+enabled = true
+
 [vars]
 # Browser origins allowed to create rooms and open signalling sockets (comma separated).
 # Add your own Pages/custom domain here; keep localhost for `make serve`.
