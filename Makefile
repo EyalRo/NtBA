@@ -1,4 +1,4 @@
-.PHONY: all web serve test check determinism fmt clean
+.PHONY: all web serve test check determinism fmt sfx clean
 
 all: check web
 
@@ -27,6 +27,10 @@ determinism: web
 
 fmt:
 	cargo fmt --all
+
+# Regenerate the C64-style sound effects in web/audio.
+sfx:
+	node scripts/make-sfx.mjs
 
 clean:
 	cargo clean

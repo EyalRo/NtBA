@@ -25,6 +25,8 @@ pub const PLAYERS: usize = 2 * TEAM_SIZE;
 const DIR_MASK: u8 = input::UP | input::DOWN | input::LEFT | input::RIGHT;
 const SCORED_PAUSE: f32 = 1.8;
 const MESSAGE_SECS: f32 = 1.6;
+/// The last seconds of the game, each of which beeps.
+const COUNTDOWN_SECS: f32 = 5.0;
 pub(crate) const STEAL_REACH: f32 = 3.0;
 const STEAL_CHANCE: f32 = 0.3;
 pub(crate) const BLOCK_REACH: f32 = 4.0;
@@ -159,6 +161,29 @@ fn map_dir(bits: u8, view: View) -> u8 {
     out
 }
 
+/// Sound cues raised by the simulation; the host plays them, the simulation never reads them.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Cue {
+    TipOff,
+    FinalBuzzer,
+    ShotClock,
+    Score2,
+    Score3,
+    Shot,
+    Pass,
+    Catch,
+    Rebound,
+    Dribble,
+    Bounce,
+    Steal,
+    Block,
+    Miss,
+    Jump,
+    Countdown,
+}
+
+pub const CUES: usize = Cue::Countdown as usize + 1;
+
 /// Screen direction bits that `map_dir` turns into the given court direction bits.
 pub fn screen_dir(court: u8, view: View) -> u8 {
     let mut out = 0;
@@ -221,6 +246,8 @@ pub struct Game {
     prev_input: [u8; 2],
     pending_points: u32,
     steal_lock: f32,
+    /// How many times each [`Cue`] has fired; not part of the state hash.
+    pub cues: [u32; CUES],
 }
 
 impl Game {
@@ -250,6 +277,7 @@ impl Game {
             prev_input: [0; 2],
             pending_points: 2,
             steal_lock: 0.0,
+            cues: [0; CUES],
         };
         for _ in 0..8 {
             g.rand();
@@ -378,16 +406,24 @@ impl Game {
         self.phase = Phase::Playing;
         self.message = None;
         self.reset_possession(0);
+        self.cue(Cue::TipOff);
     }
 
     fn say(&mut self, text: &'static str) {
         self.message = Some((text, MESSAGE_SECS));
     }
 
+    fn cue(&mut self, cue: Cue) {
+        self.cues[cue as usize] = self.cues[cue as usize].wrapping_add(1);
+    }
+
     /// Advance the simulation by one fixed tick; `pads` holds each team's input bitmask.
     pub fn step(&mut self, pads: [u8; 2]) {
         let pressed = [0, 1].map(|t| pads[t] & !self.prev_input[t]);
         self.prev_input = pads;
+        if self.ticks == 0 {
+            self.cue(Cue::TipOff);
+        }
         self.ticks += 1;
 
         if let Some((text, left)) = self.message {
@@ -454,17 +490,23 @@ impl Game {
 
     fn update_clocks(&mut self) {
         self.steal_lock = (self.steal_lock - DT).max(0.0);
+        let before = self.clock;
         self.clock -= DT;
         if self.clock <= 0.0 {
             self.clock = 0.0;
             self.phase = Phase::Final;
+            self.cue(Cue::FinalBuzzer);
             return;
+        }
+        if self.clock < COUNTDOWN_SECS && before as u32 != self.clock as u32 {
+            self.cue(Cue::Countdown);
         }
         if !matches!(self.ball.state, BallState::Scored { .. }) {
             self.shot_clock -= DT;
             if self.shot_clock <= 0.0 {
                 self.reset_possession(1 - self.offense);
                 self.say("SHOT CLOCK");
+                self.cue(Cue::ShotClock);
             }
         }
     }
@@ -552,6 +594,7 @@ impl Game {
         self.players[h].facing = attack_dir(team) as i8;
         // Remember the value of the shot for scoring.
         self.pending_points = if d >= THREE_POINT_DIST { 3 } else { 2 };
+        self.cue(Cue::Shot);
     }
 
     fn pass(&mut self, h: usize, buttons: u8) {
@@ -580,6 +623,7 @@ impl Game {
         if let Some(to) = target {
             self.ball.state = BallState::Pass { to, t: 0.0 };
             self.controlled[team_of(h)] = to;
+            self.cue(Cue::Pass);
         }
     }
 
@@ -589,6 +633,7 @@ impl Game {
             return;
         }
         self.players[me].jump = 0.5;
+        self.cue(Cue::Jump);
         let p = self.players[me];
         let d = dist(p.x, p.y, self.ball.x, self.ball.y);
         let state = self.ball.state;
@@ -596,6 +641,7 @@ impl Game {
             BallState::Held(_) if d < STEAL_REACH && self.rand() < STEAL_CHANCE => {
                 self.gain(me);
                 self.say("STEAL!");
+                self.cue(Cue::Steal);
             }
             BallState::Shot { t, .. }
                 if t < BLOCK_WINDOW && d < BLOCK_REACH && self.rand() < BLOCK_CHANCE =>
@@ -606,6 +652,7 @@ impl Game {
                 self.ball.vz = 4.0;
                 self.ball.state = BallState::Loose;
                 self.say("BLOCKED!");
+                self.cue(Cue::Block);
             }
             _ => {}
         }
@@ -626,6 +673,7 @@ impl Game {
         if gap < CONTACT_REACH && (p.vx * dx + p.vy * dy) / gap > CONTACT_SPEED {
             self.gain(d);
             self.say("STEAL!");
+            self.cue(Cue::Steal);
         }
     }
 
@@ -735,27 +783,35 @@ impl Game {
         }
     }
 
-    fn sync_held_ball(&mut self) {
-        if let BallState::Held(h) = self.ball.state {
-            let p = self.players[h];
-            // Triangle wave dribble, a little faster when running.
-            let speed = (p.vx * p.vx + p.vy * p.vy).sqrt();
-            let rate = 2.2 + speed * 0.05;
-            let phase = ((self.ticks as f32) * DT * rate).fract();
-            let tri = if phase < 0.5 {
-                phase * 2.0
-            } else {
-                2.0 - phase * 2.0
-            };
-            self.ball.x = p.x + p.facing as f32 * 1.4;
-            self.ball.y = p.y + 0.3;
-            self.ball.z = 0.6 + 3.0 * tri;
-        }
+    /// Returns true on the tick the dribble hits the floor.
+    fn sync_held_ball(&mut self) -> bool {
+        let BallState::Held(h) = self.ball.state else {
+            return false;
+        };
+        let p = self.players[h];
+        // Triangle wave dribble, a little faster when running.
+        let speed = (p.vx * p.vx + p.vy * p.vy).sqrt();
+        let rate = 2.2 + speed * 0.05;
+        let phase = ((self.ticks as f32) * DT * rate).fract();
+        let before = ((self.ticks.saturating_sub(1) as f32) * DT * rate).fract();
+        let tri = if phase < 0.5 {
+            phase * 2.0
+        } else {
+            2.0 - phase * 2.0
+        };
+        self.ball.x = p.x + p.facing as f32 * 1.4;
+        self.ball.y = p.y + 0.3;
+        self.ball.z = 0.6 + 3.0 * tri;
+        phase < before
     }
 
     fn update_ball(&mut self) {
         match self.ball.state {
-            BallState::Held(_) => self.sync_held_ball(),
+            BallState::Held(_) => {
+                if self.sync_held_ball() {
+                    self.cue(Cue::Dribble);
+                }
+            }
             BallState::Pass { to, t } => self.update_pass(to, t),
             BallState::Shot { t, dur, made } => self.update_shot(t, dur, made),
             BallState::Loose => self.update_loose(),
@@ -773,6 +829,7 @@ impl Game {
             if let Some(i) = thief {
                 self.gain(i);
                 self.say("STEAL!");
+                self.cue(Cue::Steal);
                 return;
             }
         }
@@ -783,6 +840,7 @@ impl Game {
         let step = 55.0 * DT;
         if d <= step.max(1.8) {
             self.gain(to);
+            self.cue(Cue::Catch);
             return;
         }
         self.ball.x += dx / d * step;
@@ -807,11 +865,13 @@ impl Game {
             self.ball.vy = 0.0;
             self.ball.vz = -6.0;
             self.score[team] += self.pending_points;
-            self.say(if self.pending_points == 3 {
-                "THREE POINTS!"
+            if self.pending_points == 3 {
+                self.say("THREE POINTS!");
+                self.cue(Cue::Score3);
             } else {
-                "SCORE!"
-            });
+                self.say("SCORE!");
+                self.cue(Cue::Score2);
+            }
             self.ball.state = BallState::Scored { t: 0.0 };
         } else {
             // Rim it out: kick back toward the court with a bit of randomness.
@@ -823,6 +883,7 @@ impl Game {
             self.ball.state = BallState::Loose;
             self.shot_clock = SHOT_CLOCK_SECS;
             self.say("MISS");
+            self.cue(Cue::Miss);
             let (rx, ry) = (self.ball.x + back * 10.0, self.ball.y);
             self.controlled = [0, 1].map(|t| self.nearest_in(members(t), rx, ry, None));
         }
@@ -841,6 +902,7 @@ impl Game {
             let p = self.players[i];
             if dist(p.x, p.y, self.ball.x, self.ball.y) < 2.6 {
                 self.gain(i);
+                self.cue(Cue::Rebound);
             }
         }
     }
@@ -858,6 +920,7 @@ impl Game {
     /// Ballistic motion with floor bounce and court-edge bounce.
     fn integrate_ball(&mut self) {
         let b = &mut self.ball;
+        let mut bounced = false;
         b.vz -= GRAVITY * DT;
         b.x += b.vx * DT;
         b.y += b.vy * DT;
@@ -865,6 +928,7 @@ impl Game {
         if b.z <= 0.0 {
             b.z = 0.0;
             b.vz = if b.vz < -2.5 { -b.vz * 0.62 } else { 0.0 };
+            bounced = b.vz > 0.0;
         }
         if b.x < 0.0 || b.x > COURT_L {
             b.x = b.x.clamp(0.0, COURT_L);
@@ -873,6 +937,9 @@ impl Game {
         if b.y < 0.0 || b.y > COURT_W {
             b.y = b.y.clamp(0.0, COURT_W);
             b.vy = -b.vy * 0.5;
+        }
+        if bounced {
+            self.cue(Cue::Bounce);
         }
     }
 }
@@ -1239,5 +1306,38 @@ mod tests {
         let y = g.players[0].y;
         run(&mut g, RIGHT, 20);
         assert!(g.players[0].y < y - 1.0);
+    }
+
+    #[test]
+    fn cues_count_game_events() {
+        let mut g = Game::new(3);
+        run(&mut g, 0, 120);
+        assert_eq!(g.cues[Cue::TipOff as usize], 1);
+        assert!(g.cues[Cue::Dribble as usize] >= 3, "{:?}", g.cues);
+        tap(&mut g, PASS);
+        assert_eq!(g.cues[Cue::Pass as usize], 1);
+        run(&mut g, 0, 60);
+        assert_eq!(g.cues[Cue::Catch as usize] + g.cues[Cue::Steal as usize], 1);
+        tap(&mut g, SHOOT);
+        assert_eq!(g.cues[Cue::Shot as usize], 1);
+    }
+
+    #[test]
+    fn last_seconds_beep_then_the_buzzer_sounds() {
+        let mut g = Game::new(1);
+        g.clock = 7.0;
+        run(&mut g, 0, 8 * 60);
+        assert_eq!(g.cues[Cue::Countdown as usize], 5);
+        assert_eq!(g.cues[Cue::FinalBuzzer as usize], 1);
+    }
+
+    #[test]
+    fn cues_stay_out_of_the_state_hash() {
+        let mut a = Game::new(9);
+        let mut b = Game::new(9);
+        run(&mut a, RIGHT, 30);
+        run(&mut b, RIGHT, 30);
+        b.cues = [7; CUES];
+        assert_eq!(a.state_hash(), b.state_hash());
     }
 }

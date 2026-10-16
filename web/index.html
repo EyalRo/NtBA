@@ -20,7 +20,10 @@
     </figure>
     <section class="play">
     <canvas id="screen" width="320" height="200" tabindex="0" aria-label="NtBA game screen"></canvas>
-    <p id="status" role="status">Loading…</p>
+    <div class="status-row">
+      <p id="status" role="status">Loading…</p>
+      <button type="button" class="sound-toggle" id="sound-toggle" aria-pressed="false" title="Turn sound on or off (M)">Sound: off</button>
+    </div>
     <nav class="menu" id="menu" aria-label="Main menu" hidden>
       <button type="button" id="menu-local">Local game</button>
       <button type="button" id="menu-cpu">VS CPU</button>
@@ -85,6 +88,7 @@
           <tr><th scope="row">Pass</th><td><kbd>Z</kbd></td><td><kbd>J</kbd></td></tr>
           <tr><th scope="row">Shoot</th><td><kbd>X</kbd></td><td><kbd>K</kbd></td></tr>
           <tr><th scope="row">Switch</th><td><kbd>C</kbd></td><td><kbd>L</kbd></td></tr>
+          <tr><th scope="row">Sound</th><td colspan="2"><kbd>M</kbd> on / off</td></tr>
         </tbody>
       </table>
     </section>

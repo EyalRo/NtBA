@@ -47,8 +47,10 @@ NtBA is an open-source basketball game in the spirit of the late-80s home-comput
 | **X** | **K** | Shoot (on defense: swipe for a steal or jump to block) |
 | **Z** | **J** | Pass (hold a direction to pick your target) |
 | **C** | **L** | Switch to the teammate nearest the ball |
+| **M** | **M** | Sound on / off |
 
-Run into the ball handler to strip the ball. Against the CPU or online, you control one team and either key set works.
+Run into the ball handler to strip the ball. Against the CPU or online, you control one team and either key set works. Sound starts off; turn it on with **M** or the Sound button under the screen at any time.
+
 ## ✨ What's in the box
 
 - 🏀 Five-on-five against the computer, on one keyboard or across two computers
@@ -57,6 +59,7 @@ Run into the ball handler to strip the ball. Against the CPU or online, you cont
 - 🎥 Two camera angles that switch with the action
 - 🎯 Risk/reward shooting: long shots are riskier, threes are worth the gamble
 - 🏟️ Crowd, benches, refs and a glowing scoreboard
+- 🔊 C64-style chip sound effects (off until you turn them on)
 
 > **Early days.** It's a playable prototype.
 
