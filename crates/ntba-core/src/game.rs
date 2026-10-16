@@ -144,8 +144,8 @@ fn map_dir(bits: u8, view: View) -> u8 {
     // Court directions for screen up, down, left and right.
     let (up, down, left, right) = match view {
         View::Side => return bits,
-        View::End(Basket::Right) => (input::RIGHT, input::LEFT, input::DOWN, input::UP),
-        View::End(Basket::Left) => (input::LEFT, input::RIGHT, input::UP, input::DOWN),
+        View::End(Basket::Right) => (input::RIGHT, input::LEFT, input::UP, input::DOWN),
+        View::End(Basket::Left) => (input::LEFT, input::RIGHT, input::DOWN, input::UP),
     };
     let mut out = 0;
     for (key, court) in [
@@ -1252,8 +1252,8 @@ mod tests {
         let y2 = g.players[0].y;
         run(&mut g, LEFT, 20);
         assert!(
-            g.players[0].y > y2 + 1.0,
-            "screen-left is +y in the end view"
+            g.players[0].y < y2 - 1.0,
+            "screen-left is -y in the end view"
         );
         assert!(g.players[0].x < x1 + 3.0);
     }
@@ -1273,7 +1273,7 @@ mod tests {
         run2(&mut g, [0, 0], 30);
         let y = g.players[h].y;
         run2(&mut g, [0, LEFT], 20);
-        assert!(g.players[h].y < y - 1.0, "screen-left is -y here");
+        assert!(g.players[h].y > y + 1.0, "screen-left is +y here");
     }
 
     #[test]
@@ -1301,11 +1301,11 @@ mod tests {
             (g.players[0].y - 25.0).abs() < 0.5,
             "still running toward the basket"
         );
-        // After releasing, the same key means "screen right" = -y.
+        // After releasing, the same key means "screen right" = +y.
         run(&mut g, 0, 40);
         let y = g.players[0].y;
         run(&mut g, RIGHT, 20);
-        assert!(g.players[0].y < y - 1.0);
+        assert!(g.players[0].y > y + 1.0);
     }
 
     #[test]
