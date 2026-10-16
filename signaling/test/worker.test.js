@@ -27,6 +27,15 @@ function makeEnv(extra = {}) {
         },
       }),
     },
+    LOBBY: {
+      idFromName: (name) => name,
+      get: (id) => ({
+        fetch: async (req) => {
+          forwarded.push({ id, path: new URL(req.url).pathname });
+          return new Response('lobby-proxied', { status: 200 });
+        },
+      }),
+    },
     ...extra,
   };
 }
@@ -218,4 +227,37 @@ test('responses are not sniffable and logged origins are bounded', async () => {
   assert.ok(lines.every((l) => l.length < 400), 'log line was not truncated');
   const ok = await worker.fetch(req('/health'), makeEnv());
   assert.equal(ok.headers.get('X-Content-Type-Options'), 'nosniff');
+});
+
+test('GET /lobby/ws without an upgrade is refused', async () => {
+  const res = await worker.fetch(req('/lobby/ws', { headers: { Origin: 'https://eyalro.github.io' } }), makeEnv());
+  assert.equal(res.status, 426);
+});
+
+test('GET /lobby/ws with an upgrade goes to the single main Lobby object', async () => {
+  const env = makeEnv();
+  const res = await worker.fetch(
+    req('/lobby/ws', { headers: { Origin: 'https://eyalro.github.io', Upgrade: 'websocket' } }),
+    env,
+  );
+  assert.equal(res.status, 200);
+  assert.deepEqual(env.forwarded, [{ id: 'main', path: '/lobby/ws' }]);
+});
+
+test('the lobby route refuses other origins', async () => {
+  const res = await worker.fetch(
+    req('/lobby/ws', { headers: { Origin: 'https://evil.example', Upgrade: 'websocket' } }),
+    makeEnv(),
+  );
+  assert.equal(res.status, 403);
+});
+
+test('the lobby route is rate limited', async () => {
+  const env = makeEnv({ LIMITER: { limit: async () => ({ success: false }) } });
+  const res = await worker.fetch(
+    req('/lobby/ws', { headers: { Origin: 'https://eyalro.github.io', Upgrade: 'websocket' } }),
+    env,
+  );
+  assert.equal(res.status, 429);
+  assert.deepEqual(env.forwarded, []);
 });
