@@ -46,7 +46,9 @@ handshakes between players by id. It never sees chat.
 | server to client | `error { reason }` | A refused message. |
 
 Limits: at most 16 players, whole messages up to 8 KB, 600 messages per minute per socket, and
-duplicate ids are refused. The route uses the same origin allow-list and per-IP rate limit
+duplicate ids are refused. A new connection gets 503 ("lobby busy") when 32 sockets are already
+connected, and a socket that has not sent `hello` within 10 seconds is closed (checked when the next
+connection arrives). The route uses the same origin allow-list and per-IP rate limit
 (`LIMITER`) as the other WebSocket routes. Logs carry no nicknames or payloads. The client side is
 described in [Online Play](Online-Play).
 

@@ -65,7 +65,15 @@ flowchart LR
   W[(Cloudflare Worker + Room Durable Object)]
   A -. "room code, offer / answer / ICE (setup only)" .-> W
   B -. "room code, offer / answer / ICE (setup only)" .-> W
+  L[(Lobby Durable Object)]
+  A -. "presence: who is online, handshake relay" .-> L
+  B -. "presence: who is online, handshake relay" .-> L
+  A <-- "lobby mesh: chat, challenges (peer to peer)" --> B
 ```
+
+The Room Durable Object pairs two players for one match. The Lobby Durable Object only tracks who
+is online and relays the WebRTC handshakes for the lobby mesh, a direct data channel between every
+two lobby players that carries chat and challenges.
 
 | Piece | Where | Role |
 | --- | --- | --- |
@@ -172,7 +180,12 @@ WebRTC handshakes between players by id. It never sees chat and stores nothing.
 Every player then opens a direct WebRTC data channel to every other player (a full mesh). For each
 pair the peer with the lower id makes the offer. A pair that fails to connect within 20 s is retried
 once, by the offering side, and is then shown as "can't reach for chat or challenges". The presence
-socket reconnects with backoff (1, 2, 4, 8, then 15 s) using a fresh id.
+socket reconnects with backoff (1, 2, 4, 8, then 15 s) using a fresh id, and a player who is in a
+match tells the lobby so again after every reconnect.
+
+If the lobby cannot be reached, the page says "Can't reach the lobby. Retrying…" (the room code
+below still works); after a connection that was working drops it says "Lost the lobby connection -
+retrying…". While it is retrying, or when the lobby is full, a **Retry** button tries again at once.
 
 ### Chat
 
@@ -193,8 +206,13 @@ socket reconnects with backoff (1, 2, 4, 8, then 15 s) using a fresh id.
   data channel. The target sees Accept and Decline for 30 seconds.
 * On accept the target joins the room as guest and both run the normal match handshake.
 * Decline, timeout, cancel, or either side leaving cancels the challenge and closes the hosted room.
-  If both players challenge each other at once, both challenges are cancelled with a message.
-* While in a match a player shows as "in a match" and cannot be challenged.
+  Once the target has accepted, the challenger waits at most another 30 seconds for them to connect to
+  the room; after that the challenge is cancelled with "They didn't connect - try again." A brief loss
+  of the target's lobby connection during that wait does not cancel it. If both players challenge each other at once, both challenges are cancelled with a message.
+* While in a match a player shows as "in a match" and cannot be challenged; this holds after a lobby
+  reconnect too, and a challenge that arrives while you are busy is declined automatically.
+* A muted player's challenges are declined automatically.
+* The Accept button is disabled while you are hosting or joining a room.
 * The rules live in the pure reducer `web/challenge.js`, which takes an event and returns the new
   state plus effects for the page to carry out.
 
@@ -223,7 +241,8 @@ Source, security model and operator notes: [Signalling Service](Signaling-Servic
   (As with any WebRTC game, the two players do learn each other's IP address.)
 * The service never sees gameplay, chat or challenges.
 * The `Lobby` object limits whole messages to 8 KB and each socket to 600 messages per minute,
-  refuses duplicate ids, and uses the same origin allow-list and per-IP rate limit as the other
+  refuses new connections with 503 when more than twice the player cap (32) of sockets are connected,
+  closes sockets that have not said hello within 10 seconds, refuses duplicate ids, and uses the same origin allow-list and per-IP rate limit as the other
   routes. Its logs carry no nicknames or payloads.
 
 ## NAT traversal, STUN and TURN
