@@ -259,7 +259,7 @@ fn end_w(d: f32) -> f32 {
 /// width runs across the screen with the near sideline (y = 50) on the left.
 pub fn project_end(x: f32, y: f32, z: f32) -> (i32, i32) {
     let d = COURT_L - x;
-    let sx = 160.0 - (y - COURT_W / 2.0) * end_w(d);
+    let sx = 160.0 + (y - COURT_W / 2.0) * end_w(d);
     let sy = END_BASE_Y + d * END_KY - z * END_ZPX;
     (sx.round() as i32, sy.round() as i32)
 }

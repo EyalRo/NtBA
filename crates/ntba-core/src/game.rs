@@ -48,6 +48,8 @@ const START_SPOTS: [(f32, f32); 5] = [
     (44.0, 18.0),
     (44.0, 32.0),
 ];
+/// Distance from the baseline where the ball handler inbounds after a made basket.
+const INBOUND_X: f32 = 1.0;
 /// Half-court spots the AI teammates run to.
 const OFFENSE_SPOTS: [(f32, f32); 5] = [
     (66.0, 25.0),
@@ -144,8 +146,8 @@ fn map_dir(bits: u8, view: View) -> u8 {
     // Court directions for screen up, down, left and right.
     let (up, down, left, right) = match view {
         View::Side => return bits,
-        View::End(Basket::Right) => (input::RIGHT, input::LEFT, input::DOWN, input::UP),
-        View::End(Basket::Left) => (input::LEFT, input::RIGHT, input::UP, input::DOWN),
+        View::End(Basket::Right) => (input::RIGHT, input::LEFT, input::UP, input::DOWN),
+        View::End(Basket::Left) => (input::LEFT, input::RIGHT, input::DOWN, input::UP),
     };
     let mut out = 0;
     for (key, court) in [
@@ -368,6 +370,12 @@ impl Game {
 
     /// Line both teams up with the ball in the hands of `team`'s first player.
     pub fn reset_possession(&mut self, team: usize) {
+        self.line_up(team, false);
+    }
+
+    /// Like `reset_possession`; with `inbound` the ball handler starts on the baseline under
+    /// the basket `team` defends, as after a made basket.
+    fn line_up(&mut self, team: usize, inbound: bool) {
         let facing = attack_dir(team) as i8;
         for (i, &(x, y)) in members(team).zip(START_SPOTS.iter()) {
             self.players[i] = Player {
@@ -378,6 +386,10 @@ impl Game {
             };
         }
         let handler = members(team).start;
+        if inbound {
+            self.players[handler].x = team_x(team, INBOUND_X);
+            self.players[handler].y = HOOP_Y;
+        }
         self.ball.state = BallState::Held(handler);
         for i in members(1 - team) {
             let (x, y) = self.guard_spot(i);
@@ -517,9 +529,19 @@ impl Game {
         let state = self.ball.state;
         let in_hand =
             matches!(state, BallState::Held(h) | BallState::Pass { to: h, .. } if ours(h));
-        if pressed & SWITCH != 0 && !in_hand {
-            self.controlled[team] =
-                self.nearest_in(members(team), self.ball.x, self.ball.y, Some(me));
+        if pressed & SWITCH != 0 {
+            match state {
+                // With the ball, hand control to the closest teammate.
+                BallState::Held(h) if ours(h) => {
+                    let p = self.players[h];
+                    self.controlled[team] = self.nearest_in(members(team), p.x, p.y, Some(h));
+                }
+                _ if !in_hand => {
+                    self.controlled[team] =
+                        self.nearest_in(members(team), self.ball.x, self.ball.y, Some(me));
+                }
+                _ => {}
+            }
         }
         match state {
             BallState::Held(h) if ours(h) => {
@@ -911,7 +933,7 @@ impl Game {
         self.integrate_ball();
         let t = t + DT;
         if t >= SCORED_PAUSE {
-            self.reset_possession(1 - self.offense);
+            self.line_up(1 - self.offense, true);
         } else {
             self.ball.state = BallState::Scored { t };
         }
@@ -1252,8 +1274,8 @@ mod tests {
         let y2 = g.players[0].y;
         run(&mut g, LEFT, 20);
         assert!(
-            g.players[0].y > y2 + 1.0,
-            "screen-left is +y in the end view"
+            g.players[0].y < y2 - 1.0,
+            "screen-left is -y in the end view"
         );
         assert!(g.players[0].x < x1 + 3.0);
     }
@@ -1273,7 +1295,42 @@ mod tests {
         run2(&mut g, [0, 0], 30);
         let y = g.players[h].y;
         run2(&mut g, [0, LEFT], 20);
-        assert!(g.players[h].y < y - 1.0, "screen-left is -y here");
+        assert!(g.players[h].y > y + 1.0, "screen-left is +y here");
+    }
+
+    #[test]
+    fn switch_with_the_ball_picks_the_closest_teammate() {
+        let mut g = Game::new(1);
+        let h = g.controlled[0];
+        g.ball.state = BallState::Held(h);
+        let (hx, hy) = (g.players[h].x, g.players[h].y);
+        let near = members(0).find(|&i| i != h).unwrap();
+        g.players[near].x = hx + 3.0;
+        g.players[near].y = hy;
+        for i in members(0).filter(|&i| i != h && i != near) {
+            g.players[i].x = hx + 20.0;
+            g.players[i].y = hy;
+        }
+        g.step([SWITCH, 0]);
+        assert_eq!(g.controlled[0], near);
+        assert_eq!(g.ball.state, BallState::Held(h));
+    }
+
+    #[test]
+    fn play_resumes_from_under_the_basket_after_a_score() {
+        let mut g = Game::new(1);
+        g.ball.state = BallState::Scored {
+            t: SCORED_PAUSE - DT,
+        };
+        g.ball.z = 5.0;
+        g.step([0, 0]);
+        let h = g.controlled[1];
+        assert_eq!(g.ball.state, BallState::Held(h));
+        assert_eq!(g.offense, 1);
+        // Team 1 attacks left and defends the right basket, so it inbounds at the right baseline.
+        let x = g.players[h].x;
+        assert!((x - (COURT_L - INBOUND_X)).abs() < 0.5, "x = {x}");
+        assert!((g.players[h].y - HOOP_Y).abs() < 0.5);
     }
 
     #[test]
@@ -1301,11 +1358,11 @@ mod tests {
             (g.players[0].y - 25.0).abs() < 0.5,
             "still running toward the basket"
         );
-        // After releasing, the same key means "screen right" = -y.
+        // After releasing, the same key means "screen right" = +y.
         run(&mut g, 0, 40);
         let y = g.players[0].y;
         run(&mut g, RIGHT, 20);
-        assert!(g.players[0].y < y - 1.0);
+        assert!(g.players[0].y > y + 1.0);
     }
 
     #[test]
