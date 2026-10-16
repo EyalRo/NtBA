@@ -26,6 +26,29 @@
       <button type="button" id="menu-online">Online</button>
     </nav>
     <button type="button" class="menu-back" id="menu-back" hidden>Main menu</button>
+    <section class="lobby" id="lobby" hidden aria-label="Online lobby">
+      <form id="nick-form" autocomplete="off">
+        <label>Your name
+          <input id="nick-input" maxlength="40" size="14" dir="auto" placeholder="Dana / דנה" required>
+        </label>
+        <button type="submit">Enter lobby</button>
+      </form>
+      <div id="lobby-main" hidden>
+        <p id="lobby-state" role="status"></p>
+        <div class="lobby-grid">
+          <ul id="roster" aria-label="Players online"></ul>
+          <div class="chat">
+            <ol id="chat-log" aria-live="polite"></ol>
+            <form id="chat-form" autocomplete="off">
+              <input id="chat-input" maxlength="600" dir="auto" placeholder="Say something… / כתבו משהו…" aria-label="Chat message">
+              <button type="submit">Send</button>
+            </form>
+          </div>
+        </div>
+        <p class="lobby-note">Other players in the lobby can see your IP address - that is how peer-to-peer works. Chat is not stored.</p>
+      </div>
+      <p class="lobby-or">Or play with a room code:</p>
+    </section>
     <section class="online" id="online" hidden aria-label="Online play">
       <div class="online-row" id="online-menu">
         <button type="button" id="host-btn">Host an online game</button>
