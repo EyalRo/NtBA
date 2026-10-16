@@ -55,10 +55,18 @@ export class Lobby {
    *  never clash with the new one and nobody can take over someone else's id. */
   connect() {
     this.closed = false;
-    this.myId = this.newId();
+    this.noRetry = false;
+    const old = this.ws;
+    if (old) {
+      // A replaced socket must never deliver anything or trigger a reconnect again.
+      old.onopen = old.onmessage = old.onclose = null;
+      try { old.close(); } catch { /* already closed */ }
+    }
+    const myId = this.newId();
+    this.myId = myId;
     this.players.clear();
     const ws = (this.ws = new this.WS(`${this.base.replace(/^http/, 'ws')}/lobby/ws`));
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'hello', id: this.myId, nick: this.nick }));
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'hello', id: myId, nick: this.nick }));
     ws.onmessage = (e) => this.#onServer(e.data);
     ws.onclose = () => this.#onSocketClosed(ws);
     ws.onerror = () => {}; // a close always follows
@@ -100,7 +108,7 @@ export class Lobby {
 
   /** Try the presence socket again now instead of waiting for the backoff. */
   retryNow() {
-    if (this.closed || this.noRetry) return;
+    if (this.closed) return;
     this.clearTimer(this.reconnectTimer);
     this.reconnectTimer = null;
     if (!this.ws || this.ws.readyState !== SOCKET_OPEN) this.connect();
@@ -166,8 +174,10 @@ export class Lobby {
     if (ws !== this.ws) return; // a stale socket
     for (const peer of this.peers.values()) this.#closePeer(peer);
     this.peers.clear();
+    const dropped = [...this.players.keys()];
     this.players.clear();
     this.#emitRoster();
+    for (const id of dropped) this.h.onPeerLeft?.(id);
     if (this.closed || this.noRetry) return;
     this.h.onState?.({ phase: 'reconnecting' });
     const delay = RECONNECT_MS[Math.min(this.attempt, RECONNECT_MS.length - 1)];

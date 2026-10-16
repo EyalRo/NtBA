@@ -279,3 +279,48 @@ test('an incoming offer builds an answering peer that replies with an answer', a
   assert.deepEqual(answer, { type: 'signal', to: LOW, data: { kind: 'answer', sdp: 'a' } });
   assert.equal(FakePC.all.at(-1).remoteDescription.sdp, 'remote-offer');
 });
+
+test('retryNow while the socket is still connecting leaves one live socket with the current id', async () => {
+  const first = FakeWS.all[0];
+  first.readyState = 0;
+  lobby.retryNow();
+  assert.equal(FakeWS.all.length, 2);
+  assert.equal(first.readyState, 3);
+  const second = FakeWS.all[1];
+  // Late events from the replaced socket do nothing.
+  first.onopen?.();
+  first.onmessage?.({ data: JSON.stringify(welcome(LOW)) });
+  first.onclose?.();
+  assert.equal(first.sent.length, 1); // only the hello from make()
+  assert.equal(FakePC.all.length, 0);
+  assert.equal(timers.length, 0);
+  second.onopen();
+  assert.equal(second.sent[0].id, 'NNNNNNNNNNNN');
+  second.push(welcome(LOW));
+  await tick();
+  assert.equal(events.states.at(-1), 'online');
+});
+
+test('a socket drop emits onPeerLeft once per dropped player and still reconnects', async () => {
+  const ws = FakeWS.all[0];
+  ws.push(welcome(LOW, HIGH));
+  await tick();
+  ws.close();
+  assert.deepEqual([...events.left].sort(), [LOW, HIGH].sort());
+  assert.equal(events.left.length, 2);
+  assert.ok(timers.find((t) => t.ms === 1000));
+});
+
+test('retryNow after a full reply reconnects, but full alone never does', async () => {
+  const ws = FakeWS.all[0];
+  ws.push({ type: 'full' });
+  ws.close();
+  assert.equal(timers.length, 0);
+  assert.equal(FakeWS.all.length, 1);
+  lobby.retryNow();
+  assert.equal(FakeWS.all.length, 2);
+  FakeWS.all[1].onopen();
+  FakeWS.all[1].push(welcome(LOW));
+  await tick();
+  assert.equal(events.states.at(-1), 'online');
+});
