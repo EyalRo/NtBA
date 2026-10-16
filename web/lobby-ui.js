@@ -10,7 +10,7 @@ const LINK_TEXT = {
 /**
  * @param {HTMLElement} list a <ul>
  * @param {{id: string, name: string, status: string, link: string, muted: boolean}[]} players
- * @param {{onMute?: (id: string, on: boolean) => void}} actions
+ * @param {{onMute?: (id: string, on: boolean) => void, onChallenge?: (id: string) => void, busy?: () => boolean}} actions
  */
 export function renderRoster(list, players, actions = {}) {
   const items = players.map((p) => {
@@ -30,6 +30,14 @@ export function renderRoster(list, players, actions = {}) {
       mute.textContent = p.muted ? 'Unmute' : 'Mute';
       mute.addEventListener('click', () => actions.onMute?.(p.id, !p.muted));
       li.append(mute);
+      if (actions.onChallenge) {
+        const challenge = document.createElement('button');
+        challenge.type = 'button';
+        challenge.textContent = 'Challenge';
+        challenge.disabled = p.link !== 'open' || p.status !== 'lobby' || Boolean(actions.busy?.());
+        challenge.addEventListener('click', () => actions.onChallenge(p.id));
+        li.prepend(challenge); // first, so it is the obvious action
+      }
     }
     return li;
   });

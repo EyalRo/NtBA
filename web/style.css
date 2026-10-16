@@ -119,6 +119,13 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-radius: 3p
 #chat-input { flex: 1; min-width: 0; unicode-bidi: plaintext; }
 .lobby-note, .lobby-or { margin: 0; text-align: center; color: var(--muted); font-size: 12px; }
 
+.challenge-box {
+  display: flex; gap: 10px; align-items: center; justify-content: center; flex-wrap: wrap;
+  padding: 8px 12px; border: 1px solid var(--gold); border-left: 4px solid var(--gold); border-radius: 4px; background: var(--panel);
+}
+.challenge-box p { margin: 0; color: #fff; unicode-bidi: plaintext; }
+.lobby .challenge-box[hidden] { display: none; }
+
 @media (max-width: 760px) {
   .lobby-grid { grid-template-columns: 1fr; }
   main { grid-template-columns: 1fr; }

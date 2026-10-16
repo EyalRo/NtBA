@@ -35,6 +35,11 @@
       </form>
       <div id="lobby-main" hidden>
         <p id="lobby-state" role="status"></p>
+        <div id="challenge-box" class="challenge-box" role="alertdialog" aria-labelledby="challenge-text" hidden>
+          <p id="challenge-text"></p>
+          <button type="button" id="challenge-accept">Accept</button>
+          <button type="button" id="challenge-decline">Decline</button>
+        </div>
         <div class="lobby-grid">
           <ul id="roster" aria-label="Players online"></ul>
           <div class="chat">
