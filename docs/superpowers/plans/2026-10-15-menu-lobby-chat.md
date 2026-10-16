@@ -510,8 +510,8 @@ test('cleanNick enforces length by characters, not bytes', () => {
 test('cleanNick rejects control and bidi override characters and non-strings', () => {
   assert.equal(cleanNick('a\u0000b'), null);
   assert.equal(cleanNick('a\nb'), null);
-  assert.equal(cleanNick('evil‮eno'), null); // right-to-left override
-  assert.equal(cleanNick('a⁦b'), null); // isolate
+  assert.equal(cleanNick('evil\u202eeno'), null); // right-to-left override
+  assert.equal(cleanNick('a\u2066b'), null); // isolate
   assert.equal(cleanNick(42), null);
   assert.equal(cleanNick(undefined), null);
 });
@@ -570,7 +570,7 @@ const STATUSES = new Set(['lobby', 'in-match']);
 const ID_RE = /^[A-Za-z0-9]{12}$/;
 // Control characters, plus the bidi override and isolate characters that can make one name
 // read as another. Hebrew and English letters are fine.
-const BAD_NICK_CHARS = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/;
+const BAD_NICK_CHARS = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
 
 /** Trimmed, single-spaced nickname of 1-20 characters, or null if it is not acceptable. */
 export function cleanNick(input) {
@@ -751,7 +751,7 @@ test('anything before hello is refused, and hello cannot be sent twice', async (
 test('a bad nickname is an error, not a join', async () => {
   const ws = new FakeSocket();
   ctx.acceptWebSocket(ws);
-  await lobby.webSocketMessage(ws, hello(idOf(1), 'evil‮name'));
+  await lobby.webSocketMessage(ws, hello(idOf(1), 'evil\u202ename'));
   assert.deepEqual(ws.sent, [{ type: 'error', reason: 'bad-nick' }]);
 });
 
@@ -1152,10 +1152,10 @@ test('cleanChat keeps Hebrew, English and mixed text intact', () => {
 });
 
 test('cleanChat strips bidi overrides and control characters, and rejects empty text', () => {
-  assert.equal(cleanChat('hi‮there'), 'hithere');
+  assert.equal(cleanChat('hi\u202ethere'), 'hithere');
   assert.equal(cleanChat('a\u0000b\u0007c'), 'abc');
   assert.equal(cleanChat('   '), null);
-  assert.equal(cleanChat('‮‮'), null);
+  assert.equal(cleanChat('\u202e\u202e'), null);
   assert.equal(cleanChat(42), null);
 });
 
@@ -1166,7 +1166,7 @@ test('cleanChat limits length by characters', () => {
 });
 
 test('the client and server agree on which nicknames are acceptable', () => {
-  const samples = ['Dana', '  דנה ', '', ' ', 'x'.repeat(20), 'x'.repeat(21), '🏀🏀', 'a\u0000', 'a‮b', 'a⁧b', 'a  b', '\t'];
+  const samples = ['Dana', '  דנה ', '', ' ', 'x'.repeat(20), 'x'.repeat(21), '🏀🏀', 'a\u0000', 'a\u202eb', 'a\u2067b', 'a  b', '\t'];
   for (const s of samples) assert.equal(cleanNick(s), serverCleanNick(s), JSON.stringify(s));
 });
 
@@ -1247,7 +1247,7 @@ const ID_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456
 
 // Control characters, plus the bidi override and isolate characters that can disguise text.
 // Hebrew and English letters are untouched.
-const BAD_CHARS = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/;
+const BAD_CHARS = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
 const BAD_CHARS_G = new RegExp(BAD_CHARS.source, 'g');
 
 /** Same rules as signaling/src/lobby-logic.js `cleanNick`; a test keeps the two in step. */
@@ -2285,7 +2285,7 @@ Open `http://localhost:8080/`, pick **Online**, then:
 1. Enter the name `Dana`. The lobby shows "In the lobby" and your own row.
 2. Open a second tab at the same address, enter `דנה`. Both tabs list both players; links go to "connected" within a few seconds.
 3. Chat `hello` from tab 1 and `שלום` from tab 2. Check the Hebrew line is right-aligned and reads correctly, and a mixed line like `מה קורה? nothing much` renders with each part in its own direction.
-4. Paste `hi​‮there` (contains an invisible right-to-left override) into the chat box: it must arrive as plain `hithere` and not flip any text.
+4. Paste text containing an invisible right-to-left override (U+202E), for example `hi` + U+202E + `there`, into the chat box: it must arrive as plain `hithere` and not flip any text.
 5. Click **Mute** for the other player and chat from them: nothing appears. **Unmute**.
 6. Close one tab: the other's roster drops them within a few seconds.
 7. **Main menu**: back to the title; Online again and the name field is pre-filled.
