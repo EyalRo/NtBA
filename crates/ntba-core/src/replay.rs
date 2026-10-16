@@ -13,7 +13,7 @@ use crate::input::{DOWN, LEFT, PASS, RIGHT, SHOOT, SWITCH, UP};
 /// changed on purpose, and bump the game version used for online play at the same time.
 pub const DETERMINISM_SEED: u32 = 1;
 pub const DETERMINISM_TICKS: usize = 3_600;
-pub const DETERMINISM_SEED_HASH: u64 = 0x2c22f0fd7539a3c4;
+pub const DETERMINISM_SEED_HASH: u64 = 0xc85381db70c50e0c;
 
 /// A recorded match: the seed plus the `[home, away]` pads for every tick, in order.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]

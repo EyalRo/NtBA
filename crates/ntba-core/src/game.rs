@@ -48,6 +48,8 @@ const START_SPOTS: [(f32, f32); 5] = [
     (44.0, 18.0),
     (44.0, 32.0),
 ];
+/// Distance from the baseline where the ball handler inbounds after a made basket.
+const INBOUND_X: f32 = 1.0;
 /// Half-court spots the AI teammates run to.
 const OFFENSE_SPOTS: [(f32, f32); 5] = [
     (66.0, 25.0),
@@ -368,6 +370,12 @@ impl Game {
 
     /// Line both teams up with the ball in the hands of `team`'s first player.
     pub fn reset_possession(&mut self, team: usize) {
+        self.line_up(team, false);
+    }
+
+    /// Like `reset_possession`; with `inbound` the ball handler starts on the baseline under
+    /// the basket `team` defends, as after a made basket.
+    fn line_up(&mut self, team: usize, inbound: bool) {
         let facing = attack_dir(team) as i8;
         for (i, &(x, y)) in members(team).zip(START_SPOTS.iter()) {
             self.players[i] = Player {
@@ -378,6 +386,10 @@ impl Game {
             };
         }
         let handler = members(team).start;
+        if inbound {
+            self.players[handler].x = team_x(team, INBOUND_X);
+            self.players[handler].y = HOOP_Y;
+        }
         self.ball.state = BallState::Held(handler);
         for i in members(1 - team) {
             let (x, y) = self.guard_spot(i);
@@ -921,7 +933,7 @@ impl Game {
         self.integrate_ball();
         let t = t + DT;
         if t >= SCORED_PAUSE {
-            self.reset_possession(1 - self.offense);
+            self.line_up(1 - self.offense, true);
         } else {
             self.ball.state = BallState::Scored { t };
         }
@@ -1302,6 +1314,23 @@ mod tests {
         g.step([SWITCH, 0]);
         assert_eq!(g.controlled[0], near);
         assert_eq!(g.ball.state, BallState::Held(h));
+    }
+
+    #[test]
+    fn play_resumes_from_under_the_basket_after_a_score() {
+        let mut g = Game::new(1);
+        g.ball.state = BallState::Scored {
+            t: SCORED_PAUSE - DT,
+        };
+        g.ball.z = 5.0;
+        g.step([0, 0]);
+        let h = g.controlled[1];
+        assert_eq!(g.ball.state, BallState::Held(h));
+        assert_eq!(g.offense, 1);
+        // Team 1 attacks left and defends the right basket, so it inbounds at the right baseline.
+        let x = g.players[h].x;
+        assert!((x - (COURT_L - INBOUND_X)).abs() < 0.5, "x = {x}");
+        assert!((g.players[h].y - HOOP_Y).abs() < 0.5);
     }
 
     #[test]
