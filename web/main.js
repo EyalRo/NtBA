@@ -268,6 +268,7 @@ async function main() {
   }
 
   function enterLobby(nick) {
+    if (lobby) return;
     ui.nickForm.hidden = true;
     ui.lobbyMain.hidden = false;
     lobby = new Lobby(SIGNALING_URL, nick, {
