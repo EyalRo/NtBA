@@ -58,7 +58,21 @@
       <button type="button" id="leave-btn" hidden>Leave online match</button>
       <p id="online-status" role="status"></p>
     </section>
-    <section>
+
+    <section class="help" aria-label="Controls">
+      <table class="controls">
+        <caption class="sr-only">Keyboard controls</caption>
+        <thead>
+          <tr><th scope="col"><span class="sr-only">Action</span></th><th scope="col" class="home">Home <small>gold</small></th><th scope="col" class="away">Away <small>green</small></th></tr>
+        </thead>
+        <tbody>
+          <tr><th scope="row">Move</th><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></td><td><kbd>←</kbd><kbd>↑</kbd><kbd>↓</kbd><kbd>→</kbd></td></tr>
+          <tr><th scope="row">Pass</th><td><kbd>Z</kbd></td><td><kbd>J</kbd></td></tr>
+          <tr><th scope="row">Shoot</th><td><kbd>X</kbd></td><td><kbd>K</kbd></td></tr>
+          <tr><th scope="row">Switch</th><td><kbd>C</kbd></td><td><kbd>L</kbd></td></tr>
+        </tbody>
+      </table>
+    </section>
     <aside class="join">
       NtBA is an open-source project (GPL-3.0), and we'd love your help — code, pixel art, ideas, and bug reports are all welcome.
       <a href="https://github.com/EyalRo/NtBA" target="_blank" rel="noopener">Join us on GitHub &rarr;</a>
