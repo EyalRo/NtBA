@@ -21,6 +21,11 @@
     <section class="play">
     <canvas id="screen" width="320" height="200" tabindex="0" aria-label="NtBA game screen"></canvas>
     <p id="status" role="status">Loading…</p>
+    <nav class="menu" id="menu" aria-label="Main menu" hidden>
+      <button type="button" id="menu-local">Local game</button>
+      <button type="button" id="menu-online">Online</button>
+    </nav>
+    <button type="button" class="menu-back" id="menu-back" hidden>Main menu</button>
     <section class="online" id="online" hidden aria-label="Online play">
       <div class="online-row" id="online-menu">
         <button type="button" id="host-btn">Host an online game</button>
