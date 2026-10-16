@@ -22,7 +22,7 @@ export class Lobby {
   /**
    * @param {string} signalingUrl base URL of the signalling service
    * @param {string} nick already checked with cleanNick
-   * @param {{onState?: (s: {phase: string}) => void, onRoster?: (players: object[]) => void,
+   * @param {{onState?: (s: {phase: string, everConnected?: boolean}) => void, onRoster?: (players: object[]) => void,
    *          onChat?: (c: {from: {id: string, name: string}, text: string, mine: boolean}) => void,
    *          onPeerMessage?: (id: string, msg: object) => void,
    *          onPeerLeft?: (id: string) => void}} handlers
@@ -47,6 +47,7 @@ export class Lobby {
     this.closed = false;
     this.noRetry = false;
     this.attempt = 0;
+    this.everConnected = false; // true once a welcome has arrived
     this.reconnectTimer = null;
     this.sendLimiter = createRateLimiter({ perSecond: 2, burst: 2, now: this.now });
   }
@@ -64,13 +65,16 @@ export class Lobby {
     }
     const myId = this.newId();
     this.myId = myId;
+    // A replaced socket can no longer report its own close, so drop its players and peers here
+    // (otherwise their data channels would keep delivering).
+    if (old) this.#dropPlayers();
     this.players.clear();
     const ws = (this.ws = new this.WS(`${this.base.replace(/^http/, 'ws')}/lobby/ws`));
     ws.onopen = () => ws.send(JSON.stringify({ type: 'hello', id: myId, nick: this.nick }));
     ws.onmessage = (e) => this.#onServer(e.data);
     ws.onclose = () => this.#onSocketClosed(ws);
     ws.onerror = () => {}; // a close always follows
-    this.h.onState?.({ phase: this.attempt ? 'reconnecting' : 'connecting' });
+    this.h.onState?.(this.attempt ? { phase: 'reconnecting', everConnected: this.everConnected } : { phase: 'connecting' });
   }
 
   /** Send chat to everyone connected. Returns 'ok', 'empty' or 'rate'. */
@@ -135,6 +139,11 @@ export class Lobby {
     switch (msg?.type) {
       case 'welcome':
         this.attempt = 0;
+        this.everConnected = true;
+        // The server starts every connection as 'lobby'; say so if we are in a match.
+        if (this.myStatus !== 'lobby' && this.ws?.readyState === SOCKET_OPEN) {
+          this.ws.send(JSON.stringify({ type: 'status', status: this.myStatus }));
+        }
         for (const p of Array.isArray(msg.roster) ? msg.roster : []) {
           if (p.id !== this.myId) this.#addPlayer(p);
         }
@@ -172,19 +181,27 @@ export class Lobby {
 
   #onSocketClosed(ws) {
     if (ws !== this.ws) return; // a stale socket
-    for (const peer of this.peers.values()) this.#closePeer(peer);
-    this.peers.clear();
-    const dropped = [...this.players.keys()];
-    this.players.clear();
-    this.#emitRoster();
-    for (const id of dropped) this.h.onPeerLeft?.(id);
+    this.#dropPlayers();
     if (this.closed || this.noRetry) return;
-    this.h.onState?.({ phase: 'reconnecting' });
+    this.h.onState?.({ phase: 'reconnecting', everConnected: this.everConnected });
     const delay = RECONNECT_MS[Math.min(this.attempt, RECONNECT_MS.length - 1)];
     this.attempt += 1;
     this.reconnectTimer = this.setTimer(() => {
       if (!this.closed) this.connect();
     }, delay);
+  }
+
+  /** Forget every player: close all peer connections and tell the page they are gone. */
+  #dropPlayers() {
+    for (const peer of this.peers.values()) {
+      this.clearTimer(peer.timer);
+      this.#closePeer(peer);
+    }
+    this.peers.clear();
+    const dropped = [...this.players.keys()];
+    this.players.clear();
+    this.#emitRoster();
+    for (const id of dropped) this.h.onPeerLeft?.(id);
   }
 
   #signal(to, data) {
@@ -318,6 +335,8 @@ export class Lobby {
     if (msg.type === 'chat') {
       if (this.muted.has(id)) return;
       this.h.onChat?.({ from: { id, name: displayName(player.nick, id) }, text: msg.text, mine: false });
+    } else if (msg.type === 'challenge' && this.muted.has(id)) {
+      this.sendTo(id, { type: 'decline' }); // a muted player cannot prompt us
     } else {
       this.h.onPeerMessage?.(id, msg);
     }
