@@ -33,7 +33,12 @@ export class Lobby {
     for (const ws of sockets) {
       const att = ws.deserializeAttachment();
       if (att && att.joined === false && now - att.created > HELLO_DEADLINE_MS) {
-        ws.close(1008, 'hello timeout');
+        try {
+          ws.close(1008, 'hello timeout');
+        } catch {
+          // Already closing; it no longer counts either way.
+          log('DEBUG', 'stale lobby socket was already closed');
+        }
         open -= 1;
       }
     }

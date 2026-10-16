@@ -183,6 +183,16 @@ test('admit closes unjoined sockets older than 10 seconds and then has room', ()
   for (const ws of stale) assert.deepEqual(ws.closed, { code: 1008, reason: 'hello timeout' });
 });
 
+test('admit survives a stale socket whose close() throws and still admits', () => {
+  const stale = [];
+  for (let i = 0; i < MAX_PLAYERS * 2; i++) stale.push(idle(11_000));
+  stale[0].close = () => {
+    throw new Error('already closed');
+  };
+  assert.deepEqual(lobby.admit(), { ok: true });
+  assert.deepEqual(stale[1].closed, { code: 1008, reason: 'hello timeout' });
+});
+
 test('admit never closes fresh unjoined sockets or joined players', async () => {
   const fresh = idle(9_000);
   const joined = await connect(idOf(1), 'Ann');
