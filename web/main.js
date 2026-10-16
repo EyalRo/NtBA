@@ -4,6 +4,7 @@
 import { SIGNALING_URL } from './config.js';
 import { ConnectError, PeerLink } from './net.js';
 import { nextScreen } from './flow.js';
+import { guardedAttempt } from './link-guard.js';
 import { ChatView } from './chat.js';
 import { Lobby } from './lobby.js';
 import { renderRoster } from './lobby-ui.js';
@@ -216,40 +217,24 @@ async function main() {
     return link;
   }
 
-  async function host() {
-    showBusy('Creating a room…');
-    const l = startOnline('host');
-    try {
-      await l?.host();
-    } catch (err) {
-      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
-        l?.close();
-        return;
-      }
-      const message = err instanceof ConnectError ? err.message : `Could not start an online game: ${err.message}`;
+  function failOnline(prefix) {
+    return (err) => {
+      const message = err instanceof ConnectError ? err.message : `${prefix}: ${err.message}`;
       link?.close();
       link = null;
       showMenu(message);
       drawRoster();
-    }
+    };
+  }
+
+  async function host() {
+    showBusy('Creating a room…');
+    await guardedAttempt(startOnline('host'), () => link, (l) => l?.host(), failOnline('Could not start an online game'));
   }
 
   async function join(code) {
     showBusy('Joining…');
-    const l = startOnline('guest');
-    try {
-      await l?.join(code);
-    } catch (err) {
-      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
-        l?.close();
-        return;
-      }
-      const message = err instanceof ConnectError ? err.message : `Could not join: ${err.message}`;
-      link?.close();
-      link = null;
-      showMenu(message);
-      drawRoster();
-    }
+    await guardedAttempt(startOnline('guest'), () => link, (l) => l?.join(code), failOnline('Could not join'));
   }
 
   const canOnline = Boolean(SIGNALING_URL) && typeof RTCPeerConnection !== 'undefined';
@@ -375,18 +360,12 @@ async function main() {
       if (link === l) dispatch({ type: 'room', room });
       else l?.close();
     });
-    try {
-      await l?.host();
-    } catch (err) {
-      if (link !== l) { // replaced or cleared meanwhile: never touch the current link
-        l?.close();
-        return;
-      }
+    await guardedAttempt(l, () => link, (x) => x?.host(), (err) => {
       link?.close();
       link = null;
       showMenu(err instanceof ConnectError ? err.message : `Could not start an online game: ${err.message}`);
       dispatch({ type: 'hosting-failed' });
-    }
+    });
   }
 
   ui.challengeAccept.addEventListener('click', () => dispatch({ type: 'accept-in' }));
