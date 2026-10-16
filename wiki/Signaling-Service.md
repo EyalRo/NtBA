@@ -104,5 +104,15 @@ is `SIGNALING_URL` in `web/config.js`. Deploying needs the `LOBBY` binding and t
 `wrangler.toml`; `npm run deploy` applies them.
 
 Logs are one JSON object per line with a `level` of `DEBUG`, `INFO`, `WARN` or `ERROR`.
-`wrangler.toml` turns on Workers observability, so these lines are kept and can be searched under
-Workers Logs in the Cloudflare dashboard once the Worker has been deployed with that setting.
+
+### Reading the logs
+
+`wrangler.toml` turns on Workers observability (`head_sampling_rate = 1`, so every line is kept).
+Once the Worker is deployed with that setting, search the lines under **Workers Logs** in the
+Cloudflare dashboard, or stream them live with `npx wrangler tail` in `signaling/`.
+
+Each line is `{ "level": "INFO", "msg": "room created", ...fields }`. Fields are small and
+bounded, for example `ttl`, `role` (`host` or `guest`), `reason`, `route`, `players` (lobby size)
+and the browser `origin` of a rejected request. Messages worth searching for: `origin not allowed`,
+`rate limiter binding missing`, `lobby full`, `lobby socket flooding`, `rejected lobby message`,
+`room expired`. No line carries SDP, ICE candidates, IP addresses, nicknames or chat.
