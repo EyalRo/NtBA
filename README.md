@@ -82,6 +82,53 @@ You'll need a Rust toolchain (`rustup` picks up the pinned one and the `wasm32` 
 automatically) and Python 3 for the tiny dev server. There's also a `flake.nix` if you're a Nix
 person.
 
+## 🤖 Work on NtBA with an AI agent
+
+Not sure how to help? Every open [issue](https://github.com/EyalRo/NtBA/issues) is sized for one pull
+request, so you can hand one to an AI coding agent. If you don't know where to start, paste this
+prompt into your agent (Claude Code, Codex, Copilot, Cursor, anything that can read a repo and run
+commands) and let it pick:
+
+````text
+You are helping with NtBA ("Not the Basketball Association"), an open-source retro basketball game
+written in Rust (compiled to WebAssembly) with a plain JavaScript front end.
+Repository: https://github.com/EyalRo/NtBA
+
+1. Read README.md, wiki/Architecture.md and wiki/Online-Play.md before touching code.
+2. Pick ONE open issue from https://github.com/EyalRo/NtBA/issues. Each is sized for a single pull
+   request. Issues titled "Tracking: ..." are lists, not tasks: open them and take one of the
+   issues they link. Prefer the label "good first issue", and skip any issue whose "Depends on"
+   issues are still open. If I tell you my interest (game rules, bot AI, web UI, graphics, sound,
+   networking), pick from that area. Say which issue you picked and why before you start.
+3. Work on a new branch and change only what that issue asks for. Its "Out of scope" section is a
+   hard limit.
+4. Follow these project rules:
+   - Determinism: the simulation must give bit-identical results on every machine. In
+     crates/ntba-core/src/game.rs use only + - * / and sqrt on f32, never read a clock, and use only
+     the seeded RNG already in Game. Anything that affects the simulation goes into
+     Game::state_hash(). If a change legitimately alters the pinned cross-build hash in
+     crates/ntba-core/src/replay.rs, re-pin it and explain why in the PR.
+   - ntba-core has no dependencies. Keep it that way.
+   - Art, sound and text must be original. Never copy or trace commercial games, and use only
+     fictional teams and players.
+   - Never commit secrets or credentials.
+   - Documentation lives in wiki/ (it is published to the GitHub wiki). Don't add new markdown files
+     elsewhere.
+   - Don't change the wire protocol or the wasm exports unless the issue says to; if you must,
+     say so clearly in the PR.
+5. Before opening the PR run `make check`. If you touched crates/ntba-core, ntba-net or ntba-wasm,
+   also run `make determinism`; for signalling changes run `cd signaling && npm test`.
+   Report the real results. If something fails, say so and why, don't hide it.
+6. Open a pull request whose description starts with "Closes #<issue number>", lists what you
+   verified, and includes screenshots for anything visual. Keep it small and focused.
+
+If something is unclear, ask me one short question instead of guessing.
+````
+
+Prefer to pick the issue yourself? Browse the
+[roadmap](https://github.com/EyalRo/NtBA/issues/34) and open any issue under a tracking issue; each
+one lists its context, the files involved, acceptance criteria and what is out of scope.
+
 ## 🗺️ Where to go from here
 
 Everything that isn't "go play it" lives elsewhere, on purpose:
