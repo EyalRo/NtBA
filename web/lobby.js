@@ -15,6 +15,7 @@ import {
 const STUN = [{ urls: 'stun:stun.cloudflare.com:3478' }];
 const PEER_TIMEOUT_MS = 20_000;
 const PEER_RETRY_MS = 2000;
+const HEARTBEAT_MS = 25_000; // the server drops a socket it has not heard from for 150 s
 const RECONNECT_MS = [1000, 2000, 4000, 8000, 15000];
 const SOCKET_OPEN = 1;
 
@@ -49,6 +50,7 @@ export class Lobby {
     this.attempt = 0;
     this.everConnected = false; // true once a welcome has arrived
     this.reconnectTimer = null;
+    this.heartbeatTimer = null;
     this.sendLimiter = createRateLimiter({ perSecond: 2, burst: 2, now: this.now });
   }
 
@@ -57,6 +59,7 @@ export class Lobby {
   connect() {
     this.closed = false;
     this.noRetry = false;
+    this.clearTimer(this.heartbeatTimer);
     const old = this.ws;
     if (old) {
       // A replaced socket must never deliver anything or trigger a reconnect again.
@@ -70,11 +73,24 @@ export class Lobby {
     if (old) this.#dropPlayers();
     this.players.clear();
     const ws = (this.ws = new this.WS(`${this.base.replace(/^http/, 'ws')}/lobby/ws`));
-    ws.onopen = () => ws.send(JSON.stringify({ type: 'hello', id: myId, nick: this.nick }));
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ type: 'hello', id: myId, nick: this.nick }));
+      this.#heartbeat(ws);
+    };
     ws.onmessage = (e) => this.#onServer(e.data);
     ws.onclose = () => this.#onSocketClosed(ws);
     ws.onerror = () => {}; // a close always follows
     this.h.onState?.(this.attempt ? { phase: 'reconnecting', everConnected: this.everConnected } : { phase: 'connecting' });
+  }
+
+  /** Tell the server now and then that this socket is alive; a silent one is dropped from the roster. */
+  #heartbeat(ws) {
+    this.clearTimer(this.heartbeatTimer);
+    this.heartbeatTimer = this.setTimer(() => {
+      if (ws !== this.ws || ws.readyState !== SOCKET_OPEN) return;
+      ws.send(JSON.stringify({ type: 'ping' }));
+      this.#heartbeat(ws);
+    }, HEARTBEAT_MS);
   }
 
   /** Send chat to everyone connected. Returns 'ok', 'empty' or 'rate'. */
@@ -121,6 +137,7 @@ export class Lobby {
   close() {
     this.closed = true;
     this.clearTimer(this.reconnectTimer);
+    this.clearTimer(this.heartbeatTimer);
     for (const peer of this.peers.values()) this.#closePeer(peer);
     this.peers.clear();
     this.players.clear();
@@ -181,6 +198,7 @@ export class Lobby {
 
   #onSocketClosed(ws) {
     if (ws !== this.ws) return; // a stale socket
+    this.clearTimer(this.heartbeatTimer);
     this.#dropPlayers();
     if (this.closed || this.noRetry) return;
     this.h.onState?.({ phase: 'reconnecting', everConnected: this.everConnected });

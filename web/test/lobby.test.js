@@ -293,7 +293,7 @@ test('retryNow while the socket is still connecting leaves one live socket with 
   first.onclose?.();
   assert.equal(first.sent.length, 1); // only the hello from make()
   assert.equal(FakePC.all.length, 0);
-  assert.equal(timers.length, 0);
+  assert.equal(timers.filter((t) => t.ms !== 25_000).length, 0); // 25 s is the heartbeat
   second.onopen();
   assert.equal(second.sent[0].id, 'NNNNNNNNNNNN');
   second.push(welcome(LOW));
@@ -315,7 +315,7 @@ test('retryNow after a full reply reconnects, but full alone never does', async 
   const ws = FakeWS.all[0];
   ws.push({ type: 'full' });
   ws.close();
-  assert.equal(timers.length, 0);
+  assert.equal(timers.filter((t) => t.ms !== 25_000).length, 0); // 25 s is the heartbeat
   assert.equal(FakeWS.all.length, 1);
   lobby.retryNow();
   assert.equal(FakeWS.all.length, 2);
@@ -389,4 +389,27 @@ test('a muted player cannot prompt a challenge: it is declined over the channel'
   lobby.mute(LOW, false);
   dc.onmessage({ data: JSON.stringify({ type: 'challenge', room: 'K7M2QX' }) });
   assert.deepEqual(events.peerMessages.at(-1), [LOW, { type: 'challenge', room: 'K7M2QX' }]);
+});
+
+test('the open socket pings every 25 s, and stops when the socket is replaced or closed', async () => {
+  const ws = FakeWS.all[0];
+  ws.push(welcome());
+  await tick();
+  const beat = () => timers.filter((t) => t.ms === 25_000).at(-1);
+  beat().fn();
+  assert.deepEqual(ws.sent.at(-1), { type: 'ping' });
+  const sentBefore = ws.sent.length;
+  const stale = beat();
+  lobby.connect(); // replaces the socket; the old timer may still fire
+  stale.fn();
+  assert.equal(ws.sent.length, sentBefore);
+  // The new socket starts its own heartbeat once open.
+  const second = FakeWS.all[1];
+  second.onopen();
+  beat().fn();
+  assert.deepEqual(second.sent.at(-1), { type: 'ping' });
+  lobby.close();
+  const after = second.sent.length;
+  beat().fn(); // a timer that fires after close() sends nothing more
+  assert.equal(second.sent.length, after);
 });

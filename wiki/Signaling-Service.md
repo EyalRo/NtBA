@@ -37,6 +37,7 @@ handshakes between players by id. It never sees chat.
 | Direction | Message | Meaning |
 | --- | --- | --- |
 | client to server | `hello { id, nick }` | Join the roster (`id` is 12 letters and digits; `nick` is 1 to 20 characters). |
+| client to server | `ping` | Sent every 25 s to say the socket is alive. No reply. |
 | client to server | `status { status }` | `lobby` or `in-match`. |
 | client to server | `signal { to, data }` | Relay `data` to player `to`. |
 | server to client | `welcome { you, roster }` | Joined; the current roster. |
@@ -48,7 +49,9 @@ handshakes between players by id. It never sees chat.
 Limits: at most 16 players, whole messages up to 8 KB, 600 messages per minute per socket, and
 duplicate ids are refused. A new connection gets 503 ("lobby busy") when 32 sockets are already
 connected, and a socket that has not sent `hello` within 10 seconds is closed (checked when the next
-connection arrives). The route uses the same origin allow-list and per-IP rate limit
+connection arrives). A joined socket that has sent nothing for 150 s (a closed laptop or a lost network never says
+goodbye) is closed by a 30 s alarm and the others are told the player left, so a dead player does
+not stay in the roster. The route uses the same origin allow-list and per-IP rate limit
 (`LIMITER`) as the other WebSocket routes. Logs carry no nicknames or payloads. The client side is
 described in [Online Play](Online-Play).
 

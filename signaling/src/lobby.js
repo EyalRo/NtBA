@@ -1,9 +1,17 @@
-import { MAX_MESSAGES_PER_MINUTE, MAX_PLAYERS, parseClientMessage } from './lobby-logic.js';
+import {
+  IDLE_TIMEOUT_MS,
+  MAX_MESSAGES_PER_MINUTE,
+  MAX_PLAYERS,
+  SWEEP_MS,
+  parseClientMessage,
+} from './lobby-logic.js';
 import { log } from './logic.js';
 
 // One global Durable Object: who is online, and a relay for the WebRTC handshakes between them.
 // It keeps nothing but the roster, held in each socket's attachment so it survives hibernation,
-// and it never sees chat: players talk to each other directly.
+// and it never sees chat: players talk to each other directly. Clients ping now and then; an alarm
+// closes sockets that have gone quiet (a closed laptop or a lost network never says goodbye),
+// so a dead player does not stay in the roster.
 const HELLO_DEADLINE_MS = 10_000;
 
 export class Lobby {
@@ -21,7 +29,8 @@ export class Lobby {
     const [client, server] = Object.values(pair);
     this.ctx.acceptWebSocket(server);
     const now = Date.now();
-    server.serializeAttachment({ joined: false, windowStart: now, count: 0, created: now });
+    server.serializeAttachment({ joined: false, windowStart: now, count: 0, created: now, seen: now });
+    await this.armSweep();
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -43,6 +52,35 @@ export class Lobby {
       }
     }
     return open >= MAX_PLAYERS * 2 ? { ok: false, status: 503 } : { ok: true };
+  }
+
+  /** Make sure the idle sweep is scheduled while anyone is connected. */
+  async armSweep(now = Date.now()) {
+    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + SWEEP_MS);
+  }
+
+  /** Close sockets that have not been heard from for IDLE_TIMEOUT_MS and tell the others. */
+  async alarm() {
+    const now = Date.now();
+    const sockets = this.ctx.getWebSockets();
+    for (const ws of sockets) {
+      const att = ws.deserializeAttachment();
+      if (!att || now - (att.seen ?? att.created ?? 0) <= IDLE_TIMEOUT_MS) continue;
+      // Mark it gone first so the close handler cannot announce the same player twice.
+      ws.serializeAttachment({ ...att, joined: false });
+      try {
+        ws.close(1001, 'idle');
+      } catch {
+        // Already closing.
+      }
+      if (att.joined) {
+        log('INFO', 'lobby idle player removed');
+        this.broadcast(ws, { type: 'left', id: att.id });
+      } else {
+        log('INFO', 'lobby idle socket closed');
+      }
+    }
+    if (this.ctx.getWebSockets().length > 0) await this.armSweep(now);
   }
 
   roster() {
@@ -70,6 +108,7 @@ export class Lobby {
   async webSocketMessage(ws, data) {
     const att = ws.deserializeAttachment();
     const now = Date.now();
+    att.seen = now;
     if (now - att.windowStart > 60_000) {
       att.windowStart = now;
       att.count = 0;
@@ -88,6 +127,8 @@ export class Lobby {
       this.send(ws, { type: 'error', reason: result.reason });
       return;
     }
+
+    if (result.kind === 'ping') return; // the attachment above already records that it is alive
 
     if (result.kind === 'hello') {
       if (att.joined) {
