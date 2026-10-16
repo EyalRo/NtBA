@@ -70,6 +70,7 @@ const ui = {
   challengeAccept: document.getElementById('challenge-accept'),
   challengeDecline: document.getElementById('challenge-decline'),
   soundToggle: document.getElementById('sound-toggle'),
+  colourblindToggle: document.getElementById('colourblind-toggle'),
 };
 
 const PLAYING = new Set(['local', 'cpu', 'match']);
@@ -116,10 +117,34 @@ if (soundOn) {
   window.addEventListener('keydown', wake, true);
 }
 
+// ---- colour-blind mode: away team wears blue instead of green ---------------------------
+const CB_KEY = 'ntba.colourblind';
+let colourblindOn = (() => { try { return store?.getItem(CB_KEY) === 'on'; } catch { return false; } })();
+
+let wasmExports = null; // set once the core is loaded; the saved colour-blind choice is applied then
+
+function showColourblind() {
+  ui.colourblindToggle.setAttribute('aria-pressed', String(colourblindOn));
+  ui.colourblindToggle.textContent = colourblindOn ? 'Colour-blind mode: on' : 'Colour-blind mode: off';
+  wasmExports?.ntba_colourblind(colourblindOn ? 1 : 0);
+}
+
+function setColourblind(on) {
+  colourblindOn = on;
+  try { store?.setItem(CB_KEY, on ? 'on' : 'off'); } catch { /* private mode: not remembered */ }
+  showColourblind();
+}
+
+showColourblind();
+ui.colourblindToggle.addEventListener('click', () => {
+  setColourblind(!colourblindOn);
+  if (PLAYING.has(screen)) canvas.focus();
+});
+
 const BACK_BUTTONS = new Set(['menu-back', 'leave-btn', 'challenge-decline']);
 document.addEventListener('click', (e) => {
   const button = e.target instanceof Element ? e.target.closest('button') : null;
-  if (!button || button === ui.soundToggle) return;
+  if (!button || button === ui.soundToggle || button === ui.colourblindToggle) return;
   sound.play(BACK_BUTTONS.has(button.id) ? 'ui_back' : 'ui_select');
 });
 ui.cpuSetup.addEventListener('change', () => sound.play('ui_move'));
@@ -128,6 +153,10 @@ window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return; // typing a room code
   if (e.code === 'KeyM' && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
     setSound(!soundOn);
+    return;
+  }
+  if (e.code === 'KeyB' && !e.repeat && !e.metaKey && !e.ctrlKey && !e.altKey) {
+    setColourblind(!colourblindOn);
     return;
   }
   if (!PLAYING.has(screen)) return; // title, setup and lobby take no game input
@@ -150,6 +179,8 @@ async function main() {
   if (!response.ok) throw new Error(`ntba.wasm: HTTP ${response.status} (run scripts/build-web.sh first)`);
   const { instance } = await WebAssembly.instantiate(await response.arrayBuffer(), {});
   const wasm = instance.exports;
+  wasmExports = wasm;
+  showColourblind();
 
   const width = wasm.ntba_width();
   const height = wasm.ntba_height();

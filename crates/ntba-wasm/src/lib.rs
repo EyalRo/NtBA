@@ -46,9 +46,12 @@ fn with_state<R>(f: impl FnOnce(&mut State) -> R) -> Option<R> {
 #[no_mangle]
 pub extern "C" fn ntba_init(seed: u32) {
     STATE.with(|s| {
+        let mut fb = Framebuffer::new();
+        // A restart keeps the player's display setting.
+        fb.colourblind = s.borrow().as_ref().is_some_and(|old| old.fb.colourblind);
         *s.borrow_mut() = Some(State {
             game: Game::new(seed),
-            fb: Framebuffer::new(),
+            fb,
             online: None,
             cpu: None,
         })
@@ -91,6 +94,12 @@ pub extern "C" fn ntba_render() {
             .unwrap_or(game);
         render::draw(game, fb)
     });
+}
+
+/// Turn colour-blind-safe team colours on (1) or off (0): the away team wears blue, not green.
+#[no_mangle]
+pub extern "C" fn ntba_colourblind(on: u32) {
+    with_state(|s| s.fb.colourblind = on != 0);
 }
 
 /// Pointer into wasm linear memory at the RGBA framebuffer (`width * height * 4` bytes).
