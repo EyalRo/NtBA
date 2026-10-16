@@ -29,6 +29,11 @@ NtBA is an open-source basketball game in the spirit of the late-80s home-comput
 </p>
 <p align="center"><sub>Sideline view for the fast break, end-on view when you attack the hoop.</sub></p>
 
+## 🤖 Play the computer
+1. Choose **VS CPU**.
+2. Pick a level (**Novice**, **Pro** or **All-Star**) and your side (**Home** or **Away**).
+3. Press **Start**. Both key sets steer your player.
+
 ## 🌐 Play a friend online
 1. Choose **Online**.
 2. Press **Challenge** next to a player. They get 30 seconds to **Accept** or **Decline**.
@@ -43,16 +48,17 @@ NtBA is an open-source basketball game in the spirit of the late-80s home-comput
 | **Z** | **J** | Pass (hold a direction to pick your target) |
 | **C** | **L** | Switch to the teammate nearest the ball |
 
-Run into the ball handler to strip the ball. Online, you control one team and either key set works.
+Run into the ball handler to strip the ball. Against the CPU or online, you control one team and either key set works.
 ## ✨ What's in the box
 
-- 🏀 Five-on-five, one keyboard or two computers
+- 🏀 Five-on-five against the computer, on one keyboard or across two computers
+- 🤖 A CPU opponent at three levels: Novice, Pro and All-Star
 - 🛡️ Real defense: strips, steals, blocks, jumped passing lanes
 - 🎥 Two camera angles that switch with the action
 - 🎯 Risk/reward shooting: long shots are riskier, threes are worth the gamble
 - 🏟️ Crowd, benches, refs and a glowing scoreboard
 
-> **Early days.** It's a playable prototype. A computer opponent is next, so for now bring a friend.
+> **Early days.** It's a playable prototype.
 
 ## 🛠️ Build it yourself
 

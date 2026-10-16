@@ -50,6 +50,8 @@ const ui = {
   text: document.getElementById('online-status'),
   title: document.getElementById('menu'),
   titleLocal: document.getElementById('menu-local'),
+  titleCpu: document.getElementById('menu-cpu'),
+  cpuSetup: document.getElementById('cpu-setup'),
   titleOnline: document.getElementById('menu-online'),
   back: document.getElementById('menu-back'),
   lobby: document.getElementById('lobby'),
@@ -68,14 +70,18 @@ const ui = {
   challengeDecline: document.getElementById('challenge-decline'),
 };
 
+const PLAYING = new Set(['local', 'cpu', 'match']);
+const CPU_LEVELS = ['Novice', 'Pro', 'All-Star'];
+const SIDES = ['Home (gold)', 'Away (green)'];
+
 let held = 0;
-let screen = 'title'; // 'title' | 'local' | 'online' | 'match', see flow.js
+let screen = 'title'; // 'title' | 'local' | 'cpu-setup' | 'cpu' | 'online' | 'match', see flow.js
 // Presses shorter than one tick (a quick tap between frames) must still register.
 let pending = 0;
 
 window.addEventListener('keydown', (e) => {
   if (e.target instanceof HTMLInputElement) return; // typing a room code
-  if (screen !== 'local' && screen !== 'match') return; // title and lobby take no game input
+  if (!PLAYING.has(screen)) return; // title, setup and lobby take no game input
   const bit = KEYMAP[e.code];
   if (bit === undefined) return;
   e.preventDefault();
@@ -407,16 +413,21 @@ async function main() {
   function renderScreen() {
     ui.title.hidden = screen !== 'title';
     ui.titleOnline.hidden = !canOnline;
-    ui.back.hidden = screen !== 'local' && screen !== 'online';
+    ui.cpuSetup.hidden = screen !== 'cpu-setup';
+    ui.back.hidden = !['local', 'cpu-setup', 'cpu', 'online'].includes(screen);
     ui.lobby.hidden = !(canOnline && screen === 'online');
     ui.panel.hidden = !(canOnline && (screen === 'online' || screen === 'match'));
-    status.textContent = screen === 'title' ? 'Choose how to play' : '';
+    status.textContent = {
+      title: 'Choose how to play',
+      'cpu-setup': 'Pick a level and a side',
+      cpu: `VS CPU \u00b7 ${CPU_LEVELS[cpu.level]} \u00b7 you are ${SIDES[cpu.side]}`,
+    }[screen] ?? '';
   }
 
   function go(event) {
     screen = nextScreen(screen, event);
     renderScreen();
-    if (screen === 'local' || screen === 'match') canvas.focus();
+    if (PLAYING.has(screen)) canvas.focus();
   }
 
   ui.titleLocal.addEventListener('click', () => {
@@ -426,9 +437,36 @@ async function main() {
     go('local');
   });
   ui.titleOnline.addEventListener('click', () => go('online'));
-  // Back to the title from the local game or the lobby. A local game is reset so the next one is fresh.
+
+  // ---- vs cpu ------------------------------------------------------------------------
+  const CPU_KEY = 'ntba.cpu';
+  const cpu = { level: 0, side: 0 };
+  try {
+    const saved = JSON.parse(localStorage.getItem(CPU_KEY) ?? '{}');
+    if (Number.isInteger(saved.level) && CPU_LEVELS[saved.level]) cpu.level = saved.level;
+    if (Number.isInteger(saved.side) && SIDES[saved.side]) cpu.side = saved.side;
+  } catch { /* private mode or a bad value: defaults */ }
+
+  ui.titleCpu.addEventListener('click', () => {
+    ui.cpuSetup.elements['cpu-level'].value = String(cpu.level);
+    ui.cpuSetup.elements['cpu-side'].value = String(cpu.side);
+    go('cpu');
+  });
+  ui.cpuSetup.addEventListener('submit', (e) => {
+    e.preventDefault();
+    cpu.level = Number(ui.cpuSetup.elements['cpu-level'].value);
+    cpu.side = Number(ui.cpuSetup.elements['cpu-side'].value);
+    try { localStorage.setItem(CPU_KEY, JSON.stringify(cpu)); } catch { /* not remembered */ }
+    wasm.ntba_init(newSeed());
+    wasm.ntba_cpu(1 - cpu.side, cpu.level, crypto.getRandomValues(new Uint32Array(1))[0]);
+    held = 0;
+    pending = 0;
+    go('play');
+  });
+
+  // Back to the title from a game, the cpu setup or the lobby. A game is reset so the next one is fresh.
   function returnToTitle() {
-    if (screen === 'local') {
+    if (screen === 'local' || screen === 'cpu') {
       wasm.ntba_init(newSeed());
       held = 0;
       pending = 0;
@@ -501,12 +539,14 @@ async function main() {
       }
     } else {
       while (acc >= tickMs) {
-        wasm.ntba_step(held | pending);
+        const word = held | pending;
+        // Against the computer both keymaps steer the player's side.
+        wasm.ntba_step(screen === 'cpu' ? ((word | (word >>> 8)) & 0xff) << (8 * cpu.side) : word);
         pending = 0;
         acc -= tickMs;
       }
     }
-    if (screen === 'local' || screen === 'match') {
+    if (PLAYING.has(screen)) {
       if (!wasm.ntba_game_over()) finalSince = null;
       else if (finalSince === null) finalSince = now;
       else if (now - finalSince >= FINAL_HOLD_MS) {

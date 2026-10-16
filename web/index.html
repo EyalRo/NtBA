@@ -23,8 +23,23 @@
     <p id="status" role="status">Loading…</p>
     <nav class="menu" id="menu" aria-label="Main menu" hidden>
       <button type="button" id="menu-local">Local game</button>
+      <button type="button" id="menu-cpu">VS CPU</button>
       <button type="button" id="menu-online">Online</button>
     </nav>
+    <form class="cpu-setup" id="cpu-setup" hidden aria-label="Game against the computer">
+      <fieldset>
+        <legend>Level</legend>
+        <label><input type="radio" name="cpu-level" value="0" checked> Novice</label>
+        <label><input type="radio" name="cpu-level" value="1"> Pro</label>
+        <label><input type="radio" name="cpu-level" value="2"> All-Star</label>
+      </fieldset>
+      <fieldset>
+        <legend>You play</legend>
+        <label class="home"><input type="radio" name="cpu-side" value="0" checked> Home <small>gold</small></label>
+        <label class="away"><input type="radio" name="cpu-side" value="1"> Away <small>green</small></label>
+      </fieldset>
+      <button type="submit">Start</button>
+    </form>
     <button type="button" class="menu-back" id="menu-back" hidden>Main menu</button>
     <section class="lobby" id="lobby" hidden aria-label="Online lobby">
       <form id="nick-form" autocomplete="off">

@@ -25,11 +25,11 @@ pub const PLAYERS: usize = 2 * TEAM_SIZE;
 const DIR_MASK: u8 = input::UP | input::DOWN | input::LEFT | input::RIGHT;
 const SCORED_PAUSE: f32 = 1.8;
 const MESSAGE_SECS: f32 = 1.6;
-const STEAL_REACH: f32 = 3.0;
+pub(crate) const STEAL_REACH: f32 = 3.0;
 const STEAL_CHANCE: f32 = 0.3;
-const BLOCK_REACH: f32 = 4.0;
+pub(crate) const BLOCK_REACH: f32 = 4.0;
 const BLOCK_CHANCE: f32 = 0.5;
-const BLOCK_WINDOW: f32 = 0.3;
+pub(crate) const BLOCK_WINDOW: f32 = 0.3;
 const INTERCEPT_REACH: f32 = 1.2;
 const INTERCEPT_DELAY: f32 = 0.1;
 const CONTACT_REACH: f32 = 2.4;
@@ -59,12 +59,12 @@ pub fn team_of(i: usize) -> usize {
     i / TEAM_SIZE
 }
 
-fn members(team: usize) -> Range<usize> {
+pub fn members(team: usize) -> Range<usize> {
     team * TEAM_SIZE..(team + 1) * TEAM_SIZE
 }
 
 /// +1 when the team attacks toward +x.
-fn attack_dir(team: usize) -> f32 {
+pub fn attack_dir(team: usize) -> f32 {
     if team == 0 {
         1.0
     } else {
@@ -154,6 +154,17 @@ fn map_dir(bits: u8, view: View) -> u8 {
     ] {
         if bits & key != 0 {
             out |= court;
+        }
+    }
+    out
+}
+
+/// Screen direction bits that `map_dir` turns into the given court direction bits.
+pub fn screen_dir(court: u8, view: View) -> u8 {
+    let mut out = 0;
+    for key in [input::UP, input::DOWN, input::LEFT, input::RIGHT] {
+        if map_dir(key, view) & court != 0 {
+            out |= key;
         }
     }
     out
@@ -403,6 +414,11 @@ impl Game {
         self.contact_steal();
         self.update_ball();
         self.update_view(pads);
+    }
+
+    /// The view whose key mapping applies to `pad`'s direction keys on the next tick.
+    pub fn input_view(&self, pad: usize) -> View {
+        self.legacy_view[pad].unwrap_or(self.view)
     }
 
     /// Apply the current camera's direction mapping to one pad's raw key bitmask.
@@ -1191,6 +1207,19 @@ mod tests {
         let y = g.players[h].y;
         run2(&mut g, [0, LEFT], 20);
         assert!(g.players[h].y < y - 1.0, "screen-left is -y here");
+    }
+
+    #[test]
+    fn screen_dir_inverts_map_dir() {
+        for view in [
+            View::Side,
+            View::End(Basket::Left),
+            View::End(Basket::Right),
+        ] {
+            for court in 0..16u8 {
+                assert_eq!(map_dir(screen_dir(court, view), view), court);
+            }
+        }
     }
 
     #[test]

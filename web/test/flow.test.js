@@ -7,6 +7,16 @@ test('the title leads to local or online', () => {
   assert.equal(nextScreen('title', 'online'), 'online');
 });
 
+test('vs cpu goes through setup to the game', () => {
+  assert.equal(nextScreen('title', 'cpu'), 'cpu-setup');
+  assert.equal(nextScreen('cpu-setup', 'play'), 'cpu');
+});
+
+test('cpu setup and the cpu game go back to the title', () => {
+  assert.equal(nextScreen('cpu-setup', 'menu'), 'title');
+  assert.equal(nextScreen('cpu', 'menu'), 'title');
+});
+
 test('local and online go back to the title', () => {
   assert.equal(nextScreen('local', 'menu'), 'title');
   assert.equal(nextScreen('online', 'menu'), 'title');
@@ -23,4 +33,6 @@ test('events that do not apply leave the screen unchanged', () => {
   assert.equal(nextScreen('online', 'match-end'), 'online');
   assert.equal(nextScreen('match', 'menu'), 'match');
   assert.equal(nextScreen('title', 'nonsense'), 'title');
+  assert.equal(nextScreen('title', 'play'), 'title');
+  assert.equal(nextScreen('cpu', 'match-start'), 'cpu');
 });
