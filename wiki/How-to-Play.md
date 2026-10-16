@@ -11,6 +11,7 @@ under the arena lights, and sink one while the pixel crowd goes wild.
 
 ## What you can do today
 
+- 🤖 **You against the computer**: pick Novice, Pro or All-Star and the side you play
 - 🏀 **Two players, one keyboard**: five-on-five, each of you steers one player and the AI runs the
   other four, against the shot clock and the game clock
 - 🌐 **Two players, two computers**: meet in the online lobby, chat and challenge someone, or send
@@ -22,8 +23,7 @@ under the arena lights, and sink one while the pixel crowd goes wild.
 - 🏟️ **Arena atmosphere**: a packed crowd, benches, referees and a glowing scoreboard
 - 🖥️ **Plays right in your browser**
 
-> **Early days.** This is a playable prototype. A computer opponent is next, so for now bring a
-> friend, locally or online.
+> **Early days.** This is a playable prototype.
 
 ## Controls
 
@@ -43,9 +43,23 @@ respond.
 
 ## Title menu
 
-The page opens on a title screen over an idle demo with two buttons: **Local game** (a fresh local
-game with two pads; the **Main menu** button takes you back) and **Online**. Online is hidden when
-online play is not configured or your browser has no WebRTC.
+The page opens on a title screen over an idle demo with three buttons: **Local game** (a fresh local
+game with two pads; the **Main menu** button takes you back), **VS CPU** and **Online**. Online is
+hidden when online play is not configured or your browser has no WebRTC.
+
+## Playing the computer
+
+**VS CPU** asks for a level and a side, then **Start** begins the game. Your choices are
+remembered in your browser.
+
+| Level | The computer… |
+| --- | --- |
+| **Novice** | reacts slowly, hesitates, takes long shots and rarely goes for the ball |
+| **Pro** | reacts quickly, shoots when open, swipes and strips now and then |
+| **All-Star** | reacts almost instantly, takes open threes, passes out of pressure and attacks the ball |
+
+You play **Home** (gold, attacking right) or **Away** (green, attacking left). Both key sets, WASD
+and the arrow keys with their action keys, steer your player.
 
 ## Playing online
 

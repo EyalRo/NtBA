@@ -87,16 +87,33 @@ kbd { background: var(--panel); border: 1px solid var(--line); border-bottom-wid
 /* Narrow screens: box art becomes a compact banner above the game. */
 /* Title menu */
 .menu { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
-.menu button, .menu-back {
+.menu button, .menu-back, .cpu-setup button {
   font: inherit; font-size: 1.1rem; letter-spacing: .1em; text-transform: uppercase;
   color: #fff; background: var(--panel); border: 3px solid var(--line); border-radius: 4px;
   padding: 10px 24px; cursor: pointer; box-shadow: 0 4px 0 #000;
 }
-.menu button:hover, .menu button:focus-visible, .menu-back:hover, .menu-back:focus-visible {
+.menu button:hover, .menu button:focus-visible, .menu-back:hover, .menu-back:focus-visible,
+.cpu-setup button:hover, .cpu-setup button:focus-visible {
   border-color: var(--gold); color: var(--gold); outline: none;
 }
 .menu[hidden], .menu-back[hidden], .menu button[hidden] { display: none; }
 .menu-back { font-size: 14px; padding: 4px 12px; box-shadow: none; letter-spacing: 0; text-transform: none; }
+
+/* VS CPU setup */
+.cpu-setup { display: flex; flex-wrap: wrap; gap: 12px 24px; justify-content: center; align-items: flex-end; }
+.cpu-setup[hidden] { display: none; }
+.cpu-setup fieldset { border: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.cpu-setup legend { padding: 0 0 4px; color: var(--muted); }
+.cpu-setup label {
+  position: relative; cursor: pointer; padding: 6px 14px; color: #fff; background: var(--panel);
+  border: 2px solid var(--line); border-radius: 4px; text-transform: uppercase; letter-spacing: .08em;
+}
+.cpu-setup label small { color: var(--muted); text-transform: none; letter-spacing: 0; }
+.cpu-setup input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; }
+.cpu-setup label:hover { border-color: var(--muted); }
+.cpu-setup label:has(input:checked) { border-color: var(--gold); color: var(--gold); }
+.cpu-setup label.away:has(input:checked) { border-color: #3cbe5a; color: #3cbe5a; }
+.cpu-setup label:has(input:focus-visible) { outline: 2px solid #fff; outline-offset: 2px; }
 
 /* Lobby */
 .lobby { width: 100%; max-width: 60em; display: flex; flex-direction: column; gap: 10px; }

@@ -9,6 +9,7 @@ use std::cell::RefCell;
 
 mod net;
 
+use ntba_core::cpu::{Cpu, Level};
 use ntba_core::game::{Game, Phase};
 use ntba_core::render::{self, Framebuffer};
 use ntba_core::replay::{InputLog, DETERMINISM_SEED, DETERMINISM_SEED_HASH, DETERMINISM_TICKS};
@@ -19,6 +20,8 @@ struct State {
     fb: Framebuffer,
     /// An online match in progress (or being set up); see `net.rs`.
     online: Option<net::Online>,
+    /// The computer opponent of a VS CPU game.
+    cpu: Option<Cpu>,
 }
 
 impl State {
@@ -47,21 +50,41 @@ pub extern "C" fn ntba_init(seed: u32) {
             game: Game::new(seed),
             fb: Framebuffer::new(),
             online: None,
+            cpu: None,
         })
     });
 }
 
-/// Advance one fixed tick; the low byte of `buttons` is the home pad, the next byte the away pad.
+/// Hand `team` (0 = home, 1 = away) to the computer at `level` (0 Novice, 1 Pro, 2 All-Star).
+#[no_mangle]
+pub extern "C" fn ntba_cpu(team: u32, level: u32, seed: u32) {
+    with_state(|s| {
+        s.cpu = match Level::from_index(level) {
+            Some(level) if team < 2 => Some(Cpu::new(team as usize, level, seed)),
+            _ => None,
+        }
+    });
+}
+
+/// Advance one fixed tick; `buttons` holds the home pad's byte, then the away pad's (CPU's is ignored).
 #[no_mangle]
 pub extern "C" fn ntba_step(buttons: u32) {
-    with_state(|s| s.game.step([buttons as u8, (buttons >> 8) as u8]));
+    with_state(|s| {
+        let mut pads = [buttons as u8, (buttons >> 8) as u8];
+        if let Some(cpu) = &mut s.cpu {
+            pads[cpu.team()] = cpu.pad(&s.game);
+        }
+        s.game.step(pads)
+    });
 }
 
 /// Draw the current game state into the framebuffer.
 #[no_mangle]
 pub extern "C" fn ntba_render() {
     with_state(|s| {
-        let State { game, fb, online } = s;
+        let State {
+            game, fb, online, ..
+        } = s;
         let game = online
             .as_ref()
             .and_then(|o| o.session.game())
