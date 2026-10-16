@@ -24,8 +24,12 @@ test('cleanNick enforces length by characters, not bytes', () => {
 test('cleanNick rejects control and bidi override characters and non-strings', () => {
   assert.equal(cleanNick('a\u0000b'), null);
   assert.equal(cleanNick('a\nb'), null);
-  assert.equal(cleanNick('evil‮eno'), null); // right-to-left override
-  assert.equal(cleanNick('a⁦b'), null); // isolate
+  assert.equal(cleanNick('evil\u202eeno'), null); // right-to-left override
+  assert.equal(cleanNick('a\u2066b'), null); // isolate
+  assert.equal(cleanNick(' a\n '), null); // control char at an edge that trim would otherwise remove
+  assert.equal(cleanNick('a\tb'), null);
+  assert.equal(cleanNick('a\u007fb'), null); // DEL
+  assert.equal(cleanNick('\u202eabc'), null); // leading right-to-left override
   assert.equal(cleanNick(42), null);
   assert.equal(cleanNick(undefined), null);
 });

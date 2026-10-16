@@ -9,7 +9,7 @@ const STATUSES = new Set(['lobby', 'in-match']);
 const ID_RE = /^[A-Za-z0-9]{12}$/;
 // Control characters, plus the bidi marks, overrides and isolates that can make one name
 // read as another. Hebrew and English letters are fine.
-const BAD_NICK_CHARS = /[\u0000-\u001f\u007f-\u009f‎‏‪-‮⁦-⁩]/;
+const BAD_NICK_CHARS = /[\u0000-\u001f\u007f-\u009f\u200e\u200f\u202a-\u202e\u2066-\u2069]/;
 
 /** Trimmed, single-spaced nickname of 1-20 characters, or null if it is not acceptable. */
 export function cleanNick(input) {
