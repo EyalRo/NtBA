@@ -15,14 +15,14 @@ letter to the golden age of home-computer basketball, built in the open so **you
 
 | Page | What's in it |
 | --- | --- |
-| [How to Play](How-to-Play) | What you can do today, the controls, playing online |
+| [How to Play](How-to-Play) | What you can do today, the controls, the title menu, the online lobby, chat and challenges |
 | [Get Involved](Get-Involved) | How to help, even if you don't code |
 | [Vision](Vision) | What we're building and why |
 | [Roadmap](Roadmap) | The big picture; details live in the [issues](https://github.com/EyalRo/NtBA/issues) |
 | [Developer Guide](Developer-Guide) | Setup, commands, ground rules |
 | [Architecture](Architecture) | How the code is organised |
-| [Online Play](Online-Play) | Peer-to-peer design: lock-step netcode, WebRTC, signalling, TURN, testing |
-| [Signalling Service](Signaling-Service) | The Cloudflare Worker behind online play: routes, security model, deployment |
+| [Online Play](Online-Play) | Peer-to-peer design: lock-step netcode, WebRTC, the lobby, chat and challenges, TURN, testing |
+| [Signalling Service](Signaling-Service) | The Cloudflare Worker behind online play: routes, lobby, security model, deployment |
 | [Reference Games](Reference-Games) | The games that inspire us, with notes and sources |
 | [Visual Notes](Visual-Notes) | What the originals look like and how NtBA compares |
 | [Genesis Manual Notes](Genesis-Manual-Notes) | Controls and rules from the 1990 manual |

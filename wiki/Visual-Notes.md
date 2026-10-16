@@ -126,5 +126,10 @@ The proof of concept was reworked to chase this look (see the screenshots on [Ho
 | Crowd | Tiers, waving arms | Five parallax rows of shaded fans with aisles, waving arms and camera flashes | Signs and banners, reactions to scores |
 | Shot mechanic | Hold and release at the apex, tap = fake | Instant shot | See [Genesis Manual Notes](Genesis-Manual-Notes) |
 
+**Development Version badge.** A small "DEVELOPMENT VERSION" plate sits flush with the top-right
+corner of the 320x200 framebuffer: amber lamp lettering in the game's own font on a black plate with
+a bevelled steel frame, like the other overlay plates. It is drawn last so nothing covers it, and it
+is outside the simulation, so it never affects game state or hashes.
+
 None of this is required for the current milestone (single-player versus a bot); it is a
 backlog of presentation details that carry the "televised game" feel the project is after.

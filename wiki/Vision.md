@@ -58,7 +58,7 @@ the 1989 NBA championship. Nostalgia rarely matches the box score.
 
 - Player identities and rosters — deliberately out of scope initially.
 - Exact internal resolution and palette — tune against reference research (see [Reference Games](Reference-Games)).
-- Online play: designed and implemented as lock-step peer-to-peer over WebRTC with a small signalling service; see [Online Play](Online-Play). Deployed and live-tested in Chromium; open items: cross-browser and cross-network testing, a TURN fallback decision.
+- Online play: lock-step peer-to-peer over WebRTC with a small signalling service, an online lobby, peer-to-peer chat and challenges; see [Online Play](Online-Play). Open items: cross-browser and cross-network verification, a TURN fallback decision, rollback and spectators.
 - Desktop packaging — planned, but secondary to a stable browser game.
 
 ## Addendum: more inspiration

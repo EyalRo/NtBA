@@ -1,8 +1,12 @@
 # Online play (peer-to-peer)
 
 Two people play each other over the internet with **no game server**. The only infrastructure
-is a tiny signalling service that helps the two browsers find each other; once connected, the
-players talk directly and the service is out of the loop.
+is a tiny signalling service that tells browsers who is online and helps them find each other;
+once connected, the players talk directly (match traffic, chat and challenges never pass through
+the service).
+
+Players meet in an **online lobby**: pick a name, see who else is online, chat, and challenge
+someone to a match. Room codes (Host / Join with code) remain as a fallback on the same page.
 
 Tracking issue: [#9](https://github.com/EyalRo/NtBA/issues/9). Implementation steps:
 [#40](https://github.com/EyalRo/NtBA/issues/40) design (this page),
@@ -19,12 +23,13 @@ Tracking issue: [#9](https://github.com/EyalRo/NtBA/issues/9). Implementation st
 | --- | --- |
 | Sync model | **Deterministic delay-based lock-step**: peers exchange *inputs* (one byte per team per tick), never game state. |
 | Transport | **WebRTC data channels**: one reliable and ordered, one unreliable and unordered. |
-| Finding each other | Cloudflare Worker + **one Durable Object per room**, 6-character room codes. |
+| Finding each other | Cloudflare Worker with **one Durable Object per room** (6-character room codes) and **one global `Lobby` Durable Object** that only detects who is online and relays WebRTC handshakes. |
+| Chat and challenges | Peer to peer over WebRTC data channels in a full mesh between lobby players; the service never sees them. |
 | NAT traversal | **STUN** (Cloudflare, free) always; **TURN** is optional and off until the operator adds credentials. |
 | Authority | None needed: both peers simulate the same game and check each other with state hashes. |
 | Desync | State hash every 60 ticks; a mismatch stops the match with an explanation. |
 | Versioning | The `Hello` message carries the protocol version and a **build id** (a hash of the simulation's behaviour); mismatches refuse to play. |
-| Disconnects | Distinct outcomes for quit, lost connection, timeout (5 s of silence), desync and version mismatch. No reconnect yet. |
+| Disconnects | Distinct outcomes for quit, lost connection, timeout (5 s of silence), desync and version mismatch. No reconnect. |
 
 ## Why lock-step and not host-authoritative snapshots
 
@@ -67,9 +72,14 @@ flowchart LR
 | `ntba-core` | `crates/ntba-core` | The deterministic simulation. Adds `Game::state_hash()` and `replay::InputLog`. |
 | `ntba-net` | `crates/ntba-net` | Wire protocol, `Transport` trait, simulated `LocalLink`, lock-step `Session`, level-based logging. No browser or OS dependency, so a native client can reuse it. |
 | `ntba-wasm` | `crates/ntba-wasm/src/net.rs` | C-ABI glue: JavaScript hands received bytes in and drains bytes to send. No wasm imports needed. |
-| `web/net.js` | `web/` | Signalling client and the `RTCPeerConnection` with its two data channels. Moves bytes only. |
-| `web/main.js` | `web/` | Lobby UI and the same fixed-timestep loop, driving the session instead of the solo game. |
-| `signaling/` | repo root | The Cloudflare Worker and `Room` Durable Object. |
+| `web/net.js` | `web/` | Room signalling client and the `RTCPeerConnection` with its two match data channels. Moves bytes only. |
+| `web/main.js` | `web/` | Page wiring and the same fixed-timestep loop, driving the session instead of the solo game. |
+| `web/flow.js` | `web/` | Pure screen state machine: title, local, online, match. |
+| `web/lobby.js` | `web/` | Lobby client: presence socket, mesh of peer connections, chat and challenge messages. |
+| `web/lobby-protocol.js` | `web/` | Pure helpers: name and chat cleaning, peer-message validation, offer rule, rate limiter, id generation. |
+| `web/challenge.js` | `web/` | Pure challenge reducer. |
+| `web/chat.js`, `web/lobby-ui.js` | `web/` | Chat log and player-list rendering (text only). |
+| `signaling/` | repo root | The Cloudflare Worker with the `Room` and `Lobby` Durable Objects. |
 
 ## The lock-step session
 
@@ -104,14 +114,19 @@ the bytes come from another machine.
 ## Connection flow
 
 1. The host calls `POST /rooms` and gets a code such as `K7M2QX` (valid for 10 minutes), opens the
-   room WebSocket as `host`, and shows the code.
+   room WebSocket as `host`, and shows the code. The host waits for a guest for as long as the room
+   lives.
 2. The guest enters the code and opens the WebSocket as `guest`. The room tells the host
    `peer-joined`.
 3. The host creates a WebRTC offer; offer, answer and ICE candidates travel through the room.
 4. Both data channels are **pre-negotiated** (ids 0 and 1), so there is no `ondatachannel` step.
    When both open, each side sends `done` and the room closes; the match starts with `Hello`.
-5. If no direct path forms within 25 s (or the browser reports `failed`), the page says it could
-   not connect directly and offers to try again.
+5. The 25 s connection timer starts when a guest actually joins (host) or when the guest connects.
+   If no direct path forms within it (or the browser reports `failed`), the page says it could not
+   connect directly and offers to try again.
+
+A challenge from the lobby uses this same flow: the challenger hosts a room and the accepted target
+joins it as guest (see *Challenges* below).
 
 ### Data channels
 
@@ -123,6 +138,65 @@ the bytes come from another machine.
 One reliable channel for everything would let a single lost packet stall all later inputs
 (head-of-line blocking). Inputs are sent as a repeating window instead.
 
+## The lobby
+
+Choosing **Online** on the title screen opens the lobby.
+
+* **Name.** You pick a name of 1 to 20 characters; letters, digits, Hebrew and emoji are fine, while
+  control characters and bidi override characters are rejected. It is remembered in the browser's
+  `localStorage` when that is available. Others see you as `name#ABC`: the first three characters of
+  a random 12-character peer id that is regenerated on every connection, so same-named players can be
+  told apart.
+* **Roster.** The lobby lists everyone online with their state (in the lobby or in a match) and
+  whether you are connected to them. At most 16 players fit; a 17th sees "lobby full".
+* **Notice.** The lobby tells players that others in it can see their IP address, which is how
+  peer-to-peer works.
+
+### How the lobby works
+
+Cloudflare only *detects* who is online. One global `Lobby` Durable Object, reached at
+`GET /lobby/ws`, keeps the roster in WebSocket attachments (so it survives hibernation) and relays
+WebRTC handshakes between players by id. It never sees chat and stores nothing.
+
+| Direction | Message | Meaning |
+| --- | --- | --- |
+| client to server | `hello { id, nick }` | Join the roster. |
+| client to server | `status { status }` | `lobby` or `in-match`. |
+| client to server | `signal { to, data }` | Relay a handshake message to player `to`. |
+| server to client | `welcome { you, roster }` | Joined; here is everyone. |
+| server to client | `joined`, `left`, `status` | Roster changes. |
+| server to client | `signal { from, data }` | A relayed handshake message. |
+| server to client | `full` | The lobby has 16 players. |
+| server to client | `error { reason }` | A refused message. |
+
+Every player then opens a direct WebRTC data channel to every other player (a full mesh). For each
+pair the peer with the lower id makes the offer. A pair that fails to connect within 20 s is retried
+once, by the offering side, and is then shown as "can't reach for chat or challenges". The presence
+socket reconnects with backoff (1, 2, 4, 8, then 15 s) using a fresh id.
+
+### Chat
+
+* Messages go peer to peer over the lobby data channels. Nothing is stored anywhere and there is no
+  history.
+* Hebrew and English both work. Each message is its own `dir="auto"` block, so Hebrew lines
+  right-align and English lines left-align.
+* Text is inserted as text only, never HTML, and bidi override and control characters are stripped.
+* Messages are up to 500 characters. You can send 2 messages per second; a peer that sends more than
+  5 per second is dropped, as are oversized or malformed peer messages.
+* Each player has a **Mute** button.
+
+### Challenges
+
+* A **Challenge** button sits next to each connected player who is in the lobby.
+* The challenger creates a room (`POST /rooms`), hosts it, and sends `challenge { room }` over the
+  data channel. The target sees Accept and Decline for 30 seconds.
+* On accept the target joins the room as guest and both run the normal match handshake.
+* Decline, timeout, cancel, or either side leaving cancels the challenge and closes the hosted room.
+  If both players challenge each other at once, both challenges are cancelled with a message.
+* While in a match a player shows as "in a match" and cannot be challenged.
+* The rules live in the pure reducer `web/challenge.js`, which takes an event and returns the new
+  state plus effects for the page to carry out.
+
 ## The signalling service
 
 Source, security model and operator notes: [Signalling Service](Signaling-Service).
@@ -131,6 +205,7 @@ Source, security model and operator notes: [Signalling Service](Signaling-Servic
 | --- | --- |
 | `POST /rooms` | Create a room: `{ code, ttl }` |
 | `GET /rooms/<code>/ws?role=host\|guest` | WebSocket into the room's Durable Object |
+| `GET /lobby/ws` | WebSocket into the global `Lobby` Durable Object |
 | `GET /ice` | `{ iceServers }`: STUN, plus short-lived TURN credentials when configured |
 | `GET /health` | Liveness |
 
@@ -145,7 +220,10 @@ Source, security model and operator notes: [Signalling Service](Signaling-Servic
   room codes from an alphabet without look-alike characters.
 * **Privacy:** nothing about players is stored; signalling payloads and IP addresses are never logged.
   (As with any WebRTC game, the two players do learn each other's IP address.)
-* The service never sees gameplay.
+* The service never sees gameplay, chat or challenges.
+* The `Lobby` object limits whole messages to 8 KB and each socket to 600 messages per minute,
+  refuses duplicate ids, and uses the same origin allow-list and per-IP rate limit as the other
+  routes. Its logs carry no nicknames or payloads.
 
 ## NAT traversal, STUN and TURN
 
@@ -158,7 +236,7 @@ secrets (never in the repo) and `/ice` starts returning short-lived TURN credent
 Per Cloudflare's documentation (checked October 2026) STUN is free and unlimited, and TURN is
 $0.05 per GB sent from Cloudflare with a monthly free allowance of 1,000 GB shared with Cloudflare's
 other real-time services. An NtBA match sends on the order of 1 to 2 KB per second, so the free
-allowance would go a very long way; the first version still defaults to *no relay* so that nothing
+allowance would go a very long way; the default is *no relay* so that nothing
 quietly turns into a bandwidth-bearing server. Check Cloudflare's current pricing before enabling it.
 
 ## Determinism
@@ -205,7 +283,8 @@ one JSON object per line with a `level` field.
 | Protocol round trips, truncation and garbage rejection | `ntba-net` tests |
 | Lock-step in sync over latency, jitter and 25% loss; stall behaviour; desync detection; version refusal; quit, sever, timeout | `ntba-net` session tests over the simulated link |
 | Two wasm instances over a lossy link end on the same tick with the same hash | `scripts/test-net-wasm.mjs` (CI) |
-| Signalling logic, room object and Worker routes | `signaling` unit tests (CI), with fake sockets |
+| Signalling logic, room object, lobby object and Worker routes | `signaling` unit tests (`npm test`, CI), with fake sockets |
+| Pure web modules: screen flow, lobby protocol, challenge reducer, lobby client | `node --test web/test/*.test.js` (CI) |
 | Real Durable Object, real WebSockets | `signaling` end-to-end script against `wrangler dev` |
 | Two real Chromium pages, real WebRTC, real signalling server | manual run (sides, seed, ping, same tick at the end, leave) |
 
@@ -213,34 +292,30 @@ one JSON object per line with a `level` field.
 
 ```sh
 cd signaling && npm install && npm run dev     # signalling on http://127.0.0.1:8787
-# point SIGNALING_URL in web/config.js at that URL (it is set to the deployed service), then in the repo root:
+# point SIGNALING_URL in web/config.js at that URL (the committed value is the deployed service), then in the repo root:
 make serve                                    # game on http://localhost:8080
 ```
 
-Open the page in two windows: **Host an online game** in one, then type its code into **Join with
-code** in the other. The online panel stays hidden while `SIGNALING_URL` is empty. The production
+Open the page in two windows and choose **Online** in each: pick names and challenge one from the
+other, or use **Host an online game** in one and type its code into **Join with code** in the other.
+The Online button is hidden while `SIGNALING_URL` is empty or WebRTC is unavailable. The production
 setting points at the deployed Worker.
 
 To deploy: `npm run deploy` in `signaling/` (needs a Cloudflare login or `CLOUDFLARE_API_TOKEN` in
 your environment), add the game's origin to `ALLOWED_ORIGINS`, and put the Worker URL in
 `web/config.js`.
 
-## Known limitations and follow-ups
+## Known limitations / not done yet
 
-* Deployed: the Worker is live at `https://ntba-signaling.isdino.workers.dev` and the GitHub Pages site
-  has online play enabled. Smoke test on 2026-10-15: `/health`, origin check (403 for foreign origins),
-  `/ice` (STUN only) and the 426 for non-upgrade WebSocket requests all behave as designed. The rate
-  limit is per Cloudflare location and loose, so the 6/min room limit does not trip on exactly the 7th
-  request.
-* Live-tested in Chromium only, on one machine and network: host and join worked, both sides showed
-  the same screen with ping 50-67 ms, about 5 minutes of play ran without a desync, and Leave showed
-  the right message on the other side. Still to do: Firefox and Safari pairings (the cross-browser risk
-  is the determinism assumption, which the hash check will catch) and cross-network runs (home Wi-Fi
-  against cellular or a strict network) to decide whether TURN is needed.
-* Worker observability is not enabled yet, so requests do not appear in Workers Logs.
+* Rollback, spectators and reconnecting into a match are not implemented.
+* TURN relay is supported by the Worker but off, so some firewall and NAT combinations (for example
+  some VPNs and strict networks) cannot connect peer to peer.
+* Cross-browser (Firefox, Safari) determinism and cross-network behaviour have not been verified
+  beyond Chromium.
+* Names are self-chosen and not enforced; the id suffix tells same-named players apart.
+* The mesh is capped at 16 players.
+* The game must stay in the foreground: a backgrounded tab stops sending and the peer times out
+  after 5 s.
 * The input delay is fixed at 6 ticks; it could be chosen from the measured round trip.
-* A backgrounded browser tab stops sending and the peer times out after 5 s.
-* No reconnect, spectators or rollback; no native desktop transport yet (the protocol and session are
-  platform independent, so a desktop client needs only a `Transport` implementation).
-* TURN is supported but off; the connection failure message is the fallback for now.
-* Players are not yet identified or matched beyond the room code.
+* No native desktop transport yet (the protocol and session are platform independent, so a desktop
+  client needs only a `Transport` implementation).
