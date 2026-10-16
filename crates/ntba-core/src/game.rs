@@ -517,9 +517,19 @@ impl Game {
         let state = self.ball.state;
         let in_hand =
             matches!(state, BallState::Held(h) | BallState::Pass { to: h, .. } if ours(h));
-        if pressed & SWITCH != 0 && !in_hand {
-            self.controlled[team] =
-                self.nearest_in(members(team), self.ball.x, self.ball.y, Some(me));
+        if pressed & SWITCH != 0 {
+            match state {
+                // With the ball, hand control to the closest teammate.
+                BallState::Held(h) if ours(h) => {
+                    let p = self.players[h];
+                    self.controlled[team] = self.nearest_in(members(team), p.x, p.y, Some(h));
+                }
+                _ if !in_hand => {
+                    self.controlled[team] =
+                        self.nearest_in(members(team), self.ball.x, self.ball.y, Some(me));
+                }
+                _ => {}
+            }
         }
         match state {
             BallState::Held(h) if ours(h) => {
@@ -1274,6 +1284,24 @@ mod tests {
         let y = g.players[h].y;
         run2(&mut g, [0, LEFT], 20);
         assert!(g.players[h].y > y + 1.0, "screen-left is +y here");
+    }
+
+    #[test]
+    fn switch_with_the_ball_picks_the_closest_teammate() {
+        let mut g = Game::new(1);
+        let h = g.controlled[0];
+        g.ball.state = BallState::Held(h);
+        let (hx, hy) = (g.players[h].x, g.players[h].y);
+        let near = members(0).find(|&i| i != h).unwrap();
+        g.players[near].x = hx + 3.0;
+        g.players[near].y = hy;
+        for i in members(0).filter(|&i| i != h && i != near) {
+            g.players[i].x = hx + 20.0;
+            g.players[i].y = hy;
+        }
+        g.step([SWITCH, 0]);
+        assert_eq!(g.controlled[0], near);
+        assert_eq!(g.ball.state, BallState::Held(h));
     }
 
     #[test]
