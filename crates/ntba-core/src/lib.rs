@@ -6,6 +6,7 @@
 //! WebAssembly build today, a native window later) only feed input in and copy
 //! pixels out.
 
+mod bot;
 pub mod cpu;
 pub mod font;
 pub mod game;

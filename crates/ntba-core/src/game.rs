@@ -5,6 +5,7 @@
 
 use core::ops::Range;
 
+use crate::bot;
 use crate::input::{self, PASS, SHOOT, START, SWITCH};
 use crate::{COURT_L, COURT_W, DT};
 
@@ -51,7 +52,7 @@ const START_SPOTS: [(f32, f32); 5] = [
 /// Distance from the baseline where the ball handler inbounds after a made basket.
 const INBOUND_X: f32 = 1.0;
 /// Half-court spots the AI teammates run to.
-const OFFENSE_SPOTS: [(f32, f32); 5] = [
+pub(crate) const OFFENSE_SPOTS: [(f32, f32); 5] = [
     (66.0, 25.0),
     (72.0, 8.0),
     (72.0, 42.0),
@@ -77,7 +78,7 @@ pub fn attack_dir(team: usize) -> f32 {
 }
 
 /// Mirror a home-team x so the away team uses the same spots toward its own basket.
-fn team_x(team: usize, x: f32) -> f32 {
+pub(crate) fn team_x(team: usize, x: f32) -> f32 {
     if team == 0 {
         x
     } else {
@@ -559,7 +560,13 @@ impl Game {
         }
     }
 
-    fn nearest_in(&self, range: Range<usize>, x: f32, y: f32, skip: Option<usize>) -> usize {
+    pub(crate) fn nearest_in(
+        &self,
+        range: Range<usize>,
+        x: f32,
+        y: f32,
+        skip: Option<usize>,
+    ) -> usize {
         let mut best = range.start;
         let mut best_d = f32::MAX;
         for i in range {
@@ -700,7 +707,7 @@ impl Game {
     }
 
     /// Where AI defender `i` stands: between its man and the basket that man attacks.
-    fn guard_spot(&self, i: usize) -> (f32, f32) {
+    pub(crate) fn guard_spot(&self, i: usize) -> (f32, f32) {
         let man = (i + TEAM_SIZE) % PLAYERS;
         let m = self.players[man];
         let (dx, dy) = (hoop_x(team_of(man)) - m.x, HOOP_Y - m.y);
@@ -719,11 +726,7 @@ impl Game {
             BallState::Held(h) => Some(h),
             _ => None,
         };
-        let chasers = if self.ball.state == BallState::Loose {
-            [0, 1].map(|t| Some(self.nearest_in(members(t), self.ball.x, self.ball.y, None)))
-        } else {
-            [None; 2]
-        };
+        let chasers = bot::chasers(self);
 
         for i in 0..PLAYERS {
             let team = team_of(i);
@@ -740,15 +743,7 @@ impl Game {
                     ty = 0.0;
                 }
             } else {
-                let (gx, gy, speed) = if chasers[team] == Some(i) {
-                    (self.ball.x, self.ball.y, 20.0)
-                } else if team == self.offense {
-                    let (x, y) = OFFENSE_SPOTS[i % TEAM_SIZE];
-                    (team_x(team, x), y, 15.0)
-                } else {
-                    let (x, y) = self.guard_spot(i);
-                    (x, y, 16.0)
-                };
+                let (gx, gy, speed) = bot::steer(self, i, chasers[team]);
                 let p = &self.players[i];
                 let (dx, dy) = (gx - p.x, gy - p.y);
                 let d = (dx * dx + dy * dy).sqrt();
