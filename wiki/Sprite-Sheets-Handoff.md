@@ -6,7 +6,7 @@ engineer who wires it into the renderer. Everything below is derived from the co
 
 ## Status
 
-- **Format is done.** [`assets/sprites/`](https://github.com/EyalRo/NtBA/tree/ccr-9251f6d0-4wgipm/assets/sprites) holds indexed template sheets (`players_side.png` 20 frames at 60x64, `players_end.png` 14 frames at 48x56), JSON manifests and `ntba.gpl`. They follow this page's role-colour convention and use only palette indices 0-88 plus 255. They are crude placeholders: they prove the pipeline, not the final look.
+- **Format is done.** [`assets/sprites/`](https://github.com/EyalRo/NtBA/tree/main/assets/sprites) holds indexed template sheets (`players_side.png` 20 frames at 60x64, `players_end.png` 14 frames at 48x56), JSON manifests and `ntba.gpl`. They follow this page's role-colour convention and use only palette indices 0-88 plus 255. They are crude placeholders: they prove the pipeline, not the final look.
 - **Target look is in `assets/sprites/wip/`.** Two presentation boards (1536x1024, true colour, hundreds of thousands of colours, team-coloured, labels baked in). They show richer art with more poses (pass, shoot, land), but frame counts and labels differ between v1 and v2 and they are not on the 60x64 / 48x56 grid. They cannot be loaded as is.
 - **Not done:** loader and recolouring (`sheet.rs`), pack script, in-engine validation, the poses in P1.
 - **Proposed next step:** section 7, step 0.
