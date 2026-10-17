@@ -1,6 +1,6 @@
 # Work-in-progress player sprite boards
 
-Presentation boards (1536x1024, true colour) showing the proposed player art. **Not** packable
+Target-look presentation boards (1536x1024, true colour) showing the proposed player art. **Not** packable
 sheets: they are not indexed, not on a 60x64 / 48x56 grid and contain labels. See
 [Sprite Sheets Handoff](https://github.com/EyalRo/NtBA/wiki/Sprite-Sheets-Handoff) for the target format.
 

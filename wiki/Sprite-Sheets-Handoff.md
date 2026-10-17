@@ -4,12 +4,12 @@ Audience: whoever (human artist, or an agent driving a pixel editor) produces th
 engineer who wires it into the renderer. Everything below is derived from the code at
 `75deda4`; file and symbol names are exact.
 
-## Status: first work-in-progress art
+## Status
 
-Two presentation boards are in [`assets/sprites/wip/`](https://github.com/EyalRo/NtBA/tree/ccr-9251f6d0-4wgipm/assets/sprites/wip).
-They are 1536x1024 true-colour images (hundreds of thousands of colours), not indexed 89-colour
-sheets, and frame counts and labels differ between v1 and v2. They show the direction; they are not
-yet usable as game assets. Proposed next step: a one-frame feasibility spike (see section 7, step 0).
+- **Format is done.** [`assets/sprites/`](https://github.com/EyalRo/NtBA/tree/ccr-9251f6d0-4wgipm/assets/sprites) holds indexed template sheets (`players_side.png` 20 frames at 60x64, `players_end.png` 14 frames at 48x56), JSON manifests and `ntba.gpl`. They follow this page's role-colour convention and use only palette indices 0-88 plus 255. They are crude placeholders: they prove the pipeline, not the final look.
+- **Target look is in `assets/sprites/wip/`.** Two presentation boards (1536x1024, true colour, hundreds of thousands of colours, team-coloured, labels baked in). They show richer art with more poses (pass, shoot, land), but frame counts and labels differ between v1 and v2 and they are not on the 60x64 / 48x56 grid. They cannot be loaded as is.
+- **Not done:** loader and recolouring (`sheet.rs`), pack script, in-engine validation, the poses in P1.
+- **Proposed next step:** section 7, step 0.
 
 ## 1. Goal and non-goals
 
@@ -165,8 +165,8 @@ booleans (or an enum `Action`) populated in `draw_player` from `Game` state. Rea
 
 ## 7. Task breakdown
 
-0. **Feasibility spike** (~half a day): crop one idle and one run frame from the v2 board, scale down to native 60x64 with nearest-neighbour, quantise to the 89-colour palette (add `ntba.gpl`/palette PNG from step 1 first), and view it in the engine next to the procedural player. Decide from the result whether the boards are converted or re-authored on a native pixel grid.
-1. **Palette export** (~1 h): script/`make` target dumping `PALETTE` to `assets/sprites/ntba.gpl` and a 1-row indexed PNG, so any editor loads the exact palette.
+0. **Feasibility spike** (~half a day): crop one idle and one run frame from the v2 board, scale down to native 60x64 with nearest-neighbour, quantise to the 89-colour palette in `assets/sprites/ntba.gpl`, map gold, purple, skin and hair onto the template role ramps, and view it in the engine next to the procedural player. Decide from the result whether the boards are converted or re-authored on a native pixel grid.
+1. **Palette export**: done (`assets/sprites/ntba.gpl`).
 2. **Reference render dump** (~1-2 h): a small test or example that renders each current procedural pose to PNG templates at native size (`side_person` with `STILL`, 8 run phases, jump, dribble; `end_person` front/back; `seated_person`). Artists use these as underlays/traces; it also fixes the exact pixel footprints (feet position, head height, width). Put outputs under `assets/sprites/reference/`.
 3. **Sheet format + packer + loader** (`sheet.rs`, `scripts/pack-sprites.mjs`, §5.1-5.2) with tests (~1 day).
 4. **P0 art**: side players, then end players. Review each against `assets/screenshot*.png` in-engine.
