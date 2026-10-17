@@ -15,7 +15,6 @@
 
 - [Reference Games](Reference-Games)
 - [Visual Notes](Visual-Notes)
-- [Sprite Sheets Handoff](Sprite-Sheets-Handoff)
 - [Genesis Manual Notes](Genesis-Manual-Notes)
 - [Reference Screenshots](Reference-Screenshots)
 
