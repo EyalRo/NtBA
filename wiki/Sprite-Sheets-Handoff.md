@@ -8,7 +8,7 @@ engineer who wires it into the renderer. Everything below is derived from the co
 
 **Goal.** Replace the procedurally generated figures with hand-authored, indexed-colour sprite
 sheets in the *existing* 89-colour palette, so the game reaches the "TV Sports: Basketball / Bulls
-vs. Blazers" look described in `wiki/Visual-Notes.md` (pose variety, readable faces and numbers,
+vs. Blazers" look described in [Visual Notes](Visual-Notes) (pose variety, readable faces and numbers,
 dunks, defence stances).
 
 **Non-goals.**
@@ -16,7 +16,7 @@ dunks, defence stances).
 - No true colour, alpha blending or new palette entries unless unavoidable (see §6).
 - No change to the 320x200 framebuffer or the camera/projection maths.
 
-`wiki/Architecture.md` already states the intended seam: *"Replacing it with hand-authored sprite
+[Architecture](Architecture) already states the intended seam: *"Replacing it with hand-authored sprite
 sheets in the same palette is a drop-in change inside `sprite.rs`/`people.rs`; the simulation and
 scene code only ask for 'a person with this pose'."*
 
@@ -110,7 +110,7 @@ the render code does not change.
 - **Referee** side (idle, run, whistle) and end; striped template (`stripes`) or a fixed painted version.
 - **Coach** side + end (standing, arms folded, pointing). Suit template (`suit`).
 - **Seated** bench players (home/away jacket recolour via `jacket` role), coaches, table officials.
-- **Cheerleaders and photographers** (listed as "not yet" in `wiki/Visual-Notes.md`).
+- **Cheerleaders and photographers** (listed as "not yet" in [Visual Notes](Visual-Notes)).
 
 ### P2: crowd and set dressing
 - Spectator heads+shoulders at 3 scales, normal and arms-up, with 6 shirt recolours. Currently generated per call from a hash.
@@ -164,7 +164,7 @@ booleans (or an enum `Action`) populated in `draw_player` from `Game` state. Rea
 4. **P0 art**: side players, then end players. Review each against `assets/screenshot*.png` in-engine.
 5. **Wire up and A/B**: behind a feature flag or a build constant `USE_SHEETS`, compare against procedural frames side by side in `make serve`.
 6. **P1 poses + `Pose` extension**, then P1/P2 props, crowd, logos.
-7. **Docs**: update `wiki/Architecture.md` (Sprites section currently says everything is procedural) and `wiki/Visual-Notes.md` ("Hand-authored sheets, more poses" row), and add `assets/sprites/README.md` documenting the role palette, naming and how to run `make sprites`.
+7. **Docs**: update [Architecture](Architecture) (Sprites section currently says everything is procedural) and [Visual Notes](Visual-Notes) ("Hand-authored sheets, more poses" row), and add `assets/sprites/README.md` documenting the role palette, naming and how to run `make sprites`.
 
 ## 8. Acceptance criteria
 
@@ -180,10 +180,10 @@ booleans (or an enum `Action`) populated in `draw_player` from `Game` state. Rea
 1. Hand-drawn left-facing art vs. mirrored right-facing (§5.2 item 4)? Default: mirror.
 2. Is an external artist / generation pipeline producing the PNGs, or is the goal an agent-authored pixel-by-pixel pipeline? This changes whether §7.2 (reference dumps) is the main source.
 3. Who owns the licence/provenance of the art? The wiki states "we take ideas, not art" from the reference games; keep it that way (no traced screenshots).
-4. Is a larger sprite size (e.g. 40+ px per `wiki/Visual-Notes.md` "players are drawn about twice as tall") wanted now? It changes `Cam::body_h`, canvases and court density, and is a separate change; this handoff assumes **no size change**.
+4. Is a larger sprite size (e.g. 40+ px per [Visual Notes](Visual-Notes) "players are drawn about twice as tall") wanted now? It changes `Cam::body_h`, canvases and court density, and is a separate change; this handoff assumes **no size change**.
 
-## 10. Environment notes
+## 10. Build notes
 
-- Sync/source of truth for this work was GitHub `eyalro/ntba`, branch `ccr-9251f6d0-4wgipm` (the Forgejo remote MCP tools named in the working preferences were not available in this session).
 - Build/test: `make check`, `make web`, `make serve` (port 8080), `make determinism`. Rust toolchain pinned in `rust-toolchain.toml`.
-- Nothing in this handoff has been implemented; it is analysis plus plan only.
+- Track the tasks in section 7 as GitHub issues under the `milestone: polish` label (see [Roadmap](Roadmap)).
+- Nothing in this page has been implemented yet; it is analysis plus plan only.
