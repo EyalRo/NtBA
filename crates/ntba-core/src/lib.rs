@@ -14,6 +14,7 @@ pub mod palette;
 pub mod people;
 pub mod render;
 pub mod replay;
+pub mod savecode;
 pub mod sprite;
 
 /// Virtual framebuffer size (pixels). Scaled up with nearest-neighbour by the host.
