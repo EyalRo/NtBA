@@ -1,0 +1,102 @@
+{
+  "format": "ntba-indexed-sheet-v1",
+  "frame": [
+    60,
+    64
+  ],
+  "origin": [
+    30,
+    56
+  ],
+  "frames": [
+    "idle",
+    "run0",
+    "run1",
+    "run2",
+    "run3",
+    "run4",
+    "run5",
+    "run6",
+    "run7",
+    "jump-rise",
+    "jump-apex",
+    "dribble-idle",
+    "dribble-run0",
+    "dribble-run1",
+    "dribble-run2",
+    "dribble-run3",
+    "dribble-run4",
+    "dribble-run5",
+    "dribble-run6",
+    "dribble-run7"
+  ],
+  "clips": {
+    "idle": {
+      "start": 0,
+      "len": 1
+    },
+    "run": {
+      "start": 1,
+      "len": 8
+    },
+    "jump": {
+      "start": 9,
+      "len": 2
+    },
+    "dribble_idle": {
+      "start": 11,
+      "len": 1
+    },
+    "dribble_run": {
+      "start": 12,
+      "len": 8
+    }
+  },
+  "transparent": 255,
+  "palette": "ntba.gpl",
+  "roleRamps": {
+    "skin": [
+      6,
+      7,
+      8,
+      9
+    ],
+    "hair": [
+      34,
+      35,
+      36,
+      37
+    ],
+    "jersey": [
+      14,
+      15,
+      16,
+      17
+    ],
+    "trim": [
+      18,
+      19,
+      20,
+      21
+    ],
+    "shorts": [
+      58,
+      59,
+      60,
+      61
+    ],
+    "socks": [
+      22,
+      23,
+      24,
+      25
+    ],
+    "shoes": [
+      26,
+      27,
+      28,
+      29
+    ]
+  },
+  "notes": "Original template-coloured pixel art. Recolour role ramps at runtime. Left-facing play mirrors the right-facing art in v1."
+}
